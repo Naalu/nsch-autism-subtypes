@@ -1,12 +1,25 @@
-"""Step 1. Select currently-autistic children aged 6-17 from each survey year.
+"""Step 1 of 8. Pick out the children we study from each year's survey file.
 
-Reads the Census topical file for each year (downloading it first with
-``--download``), keeps the columns named in config/conditions.yaml, applies the
-selection, and writes one interim file per year plus a table of the counts at
-each filter.
+What happens here
+-----------------
+For each survey year (2016 to 2025 by default):
 
-    python scripts/01_select.py --download
-    python scripts/01_select.py --years 2025 --download
+1. Download the Census file if we do not have it yet (``--download``).
+2. Read only the columns named in ``config/conditions.yaml``. The full file has
+   over 400 columns; we need about 50.
+3. Keep children aged 6 to 17 whose parent says they currently have autism.
+4. Save those rows to ``data/interim/selected_{year}.parquet`` with their
+   original Census column names, and record how many children passed each
+   filter.
+
+The counts go to ``data/processed/selection_counts.csv``, which is the
+"how did we get from 400,000 children to 11,000" table in the report.
+
+Usage::
+
+    python scripts/01_select.py --download              # all years
+    python scripts/01_select.py --years 2025 --download # one year
+    python scripts/01_select.py --loader nsch           # read via the nsch package instead
 """
 
 from __future__ import annotations
@@ -15,41 +28,47 @@ from pathlib import Path
 
 import pandas as pd
 
-from _common import INTERIM, PROCESSED, RAW, log, parse_years, parser
+from _common import INTERIM_DIR, PROCESSED_DIR, RAW_DIR, log, make_parser, parse_years
 from nsch_subtypes.config import load_config
-from nsch_subtypes.data import download_year, read_year, select
+from nsch_subtypes.data import download_year, read_year, select_children
 
 
 def main() -> None:
-    p = parser("Select autistic children aged 6-17 from the NSCH files", backend=False)
-    p.add_argument("--years", default="2016-2025", help="e.g. 2016-2025 or 2022,2023")
-    p.add_argument("--download", action="store_true", help="download missing years from the Census Bureau")
-    p.add_argument("--loader", choices=["census", "nsch"], default="census")
-    p.add_argument("--raw", type=Path, default=RAW, help="where the Census files live")
-    args = p.parse_args()
+    parser = make_parser("Select autistic children aged 6-17 from the NSCH files", backend=False)
+    parser.add_argument("--years", default="2016-2025", help="e.g. 2016-2025 or 2022,2023")
+    parser.add_argument("--download", action="store_true", help="download missing years from the Census Bureau")
+    parser.add_argument("--loader", choices=["census", "nsch"], default="census", help="how to read the files")
+    parser.add_argument("--raw", type=Path, default=RAW_DIR, help="where the Census files live")
+    args = parser.parse_args()
 
     config = load_config()
-    columns = config.raw_columns
-    INTERIM.mkdir(parents=True, exist_ok=True)
-    PROCESSED.mkdir(parents=True, exist_ok=True)
+    columns_needed = config.raw_columns
+    INTERIM_DIR.mkdir(parents=True, exist_ok=True)
+    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
-    counts = []
+    count_rows = []
     for year in parse_years(args.years):
         if args.download:
             download_year(year, args.raw)
-        df = read_year(year, args.raw, columns, loader=args.loader)
-        selected, c = select(df, config.keys)
-        selected.to_parquet(INTERIM / f"selected_{year}.parquet", index=False)
-        counts.append({"year": year, **c})
-        log(f"{year}: {c['n_children']:>6} children, {c['n_age_6_17']:>6} aged 6-17, {c['n_asd_current']:>5} currently autistic -> {c['n_selected']} selected")
+        all_children = read_year(year, args.raw, columns_needed, loader=args.loader)
+        selected, counts = select_children(all_children, config.keys)
+        selected.to_parquet(INTERIM_DIR / f"selected_{year}.parquet", index=False)
+        count_rows.append({"year": year, **counts})
+        log(
+            f"{year}: {counts['n_children']:>6} children, {counts['n_age_6_17']:>6} aged 6-17, "
+            f"{counts['n_asd_current']:>5} currently autistic -> {counts['n_selected']} selected"
+        )
 
-    out = pd.DataFrame(counts)
-    existing = PROCESSED / "selection_counts.csv"
-    if existing.exists():  # keep counts for years not run this time
-        prev = pd.read_csv(existing)
-        out = pd.concat([prev[~prev["year"].isin(out["year"])], out]).sort_values("year")
-    out.to_csv(existing, index=False)
-    log(f"wrote {existing}")
+    # Merge with counts from earlier runs so that running one year does not
+    # erase the others.
+    new_counts = pd.DataFrame(count_rows)
+    counts_path = PROCESSED_DIR / "selection_counts.csv"
+    if counts_path.exists():
+        old_counts = pd.read_csv(counts_path)
+        kept_old = old_counts[~old_counts["year"].isin(new_counts["year"])]
+        new_counts = pd.concat([kept_old, new_counts]).sort_values("year")
+    new_counts.to_csv(counts_path, index=False)
+    log(f"wrote {counts_path}")
 
 
 if __name__ == "__main__":

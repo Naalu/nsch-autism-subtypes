@@ -1,22 +1,39 @@
-# Condition items from the NSCH topical file, 2016-2025.
+# Which survey questions become the condition flags, and which we left out.
 #
-# Each entry maps one analysis flag to the raw variables it is built from.
-# `ever` is the "has a doctor or other health care provider EVER told you
-# that this child has ..." item (1 = yes, 2 = no). `currently` is the
-# follow-up "does this child CURRENTLY have the condition?" item, asked only
-# when `ever` is yes. Conditions that are lifelong or structural have no
-# follow-up item, so the flag is built from `ever` alone.
+# This is the one file that decides what the clustering methods see. Every
+# health condition we considered is listed, whether it is in or out, and why.
 #
-# Flag coding: 1 if the child currently has the condition, 0 if not, missing
-# if the parent did not answer. See nsch_subtypes.data.encode for the exact rule.
+# How to read an entry
+# --------------------
+#   name       short name used as a column in our tables (e.g. adhd)
+#   label      readable label for figures
+#   ever       Census variable for "Has a doctor or other health care provider
+#              EVER told you that this child has ...?"  (1 = yes, 2 = no)
+#   currently  Census variable for the follow-up "Does this child CURRENTLY
+#              have the condition?", asked only when `ever` is yes. Lifelong
+#              conditions (Down syndrome, cerebral palsy, ...) have no
+#              follow-up, written here as `null`.
+#   years      the survey years the question was asked
+#   include    true = candidate for the analysis; false = left out (see reason)
+#   note       anything worth knowing about the item
+#   reason     why an item is excluded
 #
-# `include: false` records items we audited and left out, with the reason.
-# Items with `include: true` are still subject to the prevalence rule in
-# scripts/02_encode.py (default: at least 1% of the pooled autistic sample).
+# Names like k2q31a are the Census Bureau's own variable names. They look
+# cryptic but stay the same across years, which is what makes a ten-year
+# analysis possible.
+#
+# How an entry becomes a flag
+# ---------------------------
+# 1 if the child currently has the condition, 0 if not, missing if the parent
+# did not answer. The exact rule is in nsch_subtypes.data.encode_flag.
+#
+# Items with `include: true` must also pass the prevalence rule in
+# scripts/02_encode.py: at least `min_prevalence` (1%) of the pooled
+# 2016-2024 autistic sample has the condition. Cystic fibrosis fails it.
 #
 # Sources: the per-year Stata .do files from Census and the CAHMI
 # 2016-present variable crosswalk (childhealthdata.org), checked against the
-# files themselves. Years listed are the years the item was asked.
+# files themselves.
 
 min_prevalence: 0.01
 

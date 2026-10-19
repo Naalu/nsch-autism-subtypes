@@ -1,68 +1,90 @@
-"""Step 8. Forward test on the 2025 survey year.
+"""Step 8 of 8. The forward test: a survey year nobody had seen when the analysis was designed.
 
-The 2025 file was released by Census on October 5, 2026, after this project's
-design and pass lines were fixed, and nobody on the team looked at it before
-the 2016-2024 analysis was frozen. The test:
+The 2025 NSCH file was released by Census on October 5, 2026, after this
+project's design and pass lines were fixed. That makes it the cleanest
+replication we can get: there was no way to tune anything to it.
 
-1. Label the 2025 children with the frozen 2016-2024 model (no refitting).
-2. Refit the model from scratch on 2025 alone at the same K.
-3. ARI between the two labelings. Pass line: ARI >= 0.65.
-4. Weighted 2025 class shares under the frozen model, for comparison with
-   the 2016-2024 shares.
+What happens here
+-----------------
+1. Label the 2025 children with the frozen 2016-2024 model, with no refitting.
+2. Fit a fresh model on 2025 alone, at the same K.
+3. Match the fresh model's classes to the frozen ones and score the agreement
+   between the two labelings with the adjusted Rand index. Pass line: ARI >= 0.65.
+4. Report the weighted 2025 class shares under the frozen model, to set
+   beside the 2016-2024 shares from step 7.
+
+Outputs, under ``results/``::
+
+    shares_2025.csv       weighted share of each class in 2025 (frozen model)
+    forward_2025.json     ARI, pass/fail, profile gaps, the refit's matched profiles
+
+Usage::
 
     python scripts/08_forward_2025.py --backend reference
 """
 
 from __future__ import annotations
 
-import json
-
-from _common import backend_or_exit, load_analysis, load_lca, log, parser, save_json
-from nsch_subtypes.data import flag_matrix
+from _common import backend_or_exit, load_analysis, load_lca_fit, log, make_parser, read_best_k, save_json
+from nsch_subtypes.data import to_flag_matrix
 from nsch_subtypes.describe import class_shares
-from nsch_subtypes.validate import ARI_PASS, ari, match_classes, posterior, profile_distance, relabel
+from nsch_subtypes.validate import (
+    ARI_PASS,
+    adjusted_rand_index,
+    class_probabilities,
+    match_classes,
+    mean_rate_difference,
+    relabel_to_match,
+)
 
 
 def main() -> None:
-    p = parser("Forward test on 2025")
-    p.add_argument("--n-starts", type=int, default=20)
-    p.add_argument("--k", type=int, default=None)
-    args = p.parse_args()
+    parser = make_parser("Forward test on 2025")
+    parser.add_argument("--n-starts", type=int, default=20)
+    parser.add_argument("--k", type=int, default=None, help="override the K chosen in step 3")
+    args = parser.parse_args()
 
     fit_lca = backend_or_exit(args.backend, "lca")["lca"]
-    k = args.k or json.loads((args.results / "lca_best.json").read_text())["best_k"]
-    frozen = load_lca(args.results, k)
+    k = args.k or read_best_k(args.results)
+    frozen = load_lca_fit(args.results, k)
+
     table, flags = load_analysis([2025])
-    X = flag_matrix(table, flags)
-    log(f"{X.shape[0]} children in 2025 with every flag answered; K={k}")
+    flag_matrix = to_flag_matrix(table, flags)
+    log(f"{flag_matrix.shape[0]} children in 2025 with every flag answered; K={k}")
 
-    resp_frozen = posterior(X, frozen["class_sizes"], frozen["condition_rates"])
-    labels_frozen = resp_frozen.argmax(axis=1)
-    refit = fit_lca(X, k, n_starts=args.n_starts, seed=args.seed)
+    # 1. The frozen model's view of the 2025 children.
+    frozen_probabilities = class_probabilities(flag_matrix, frozen["class_sizes"], frozen["condition_rates"])
+    frozen_labels = frozen_probabilities.argmax(axis=1)
+
+    # 2 and 3. A fresh fit, matched to the frozen classes, then compared.
+    refit = fit_lca(flag_matrix, k, n_starts=args.n_starts, seed=args.seed)
     perm = match_classes(frozen["condition_rates"], refit.condition_rates)
-    labels_refit = relabel(refit.labels, perm)
-    score = ari(labels_frozen, labels_refit)
+    refit_labels = relabel_to_match(refit.labels, perm)
+    score = adjusted_rand_index(frozen_labels, refit_labels)
 
-    shares = class_shares(table, resp_frozen, pooled_years=1)
+    # 4. Weighted shares for a single year, so pooled_years=1.
+    shares = class_shares(table, frozen_probabilities, pooled_years=1)
     shares.to_csv(args.results / "shares_2025.csv", index=False)
+
     save_json(
         {
             "k": k,
             "backend": args.backend,
-            "n_2025": int(X.shape[0]),
+            "n_2025": int(flag_matrix.shape[0]),
             "ari": score,
             "pass": score >= ARI_PASS,
             "pass_line": ARI_PASS,
-            "mean_abs_rate_difference_per_class": profile_distance(frozen["condition_rates"], refit.condition_rates, perm),
+            "mean_abs_rate_difference_per_class": mean_rate_difference(frozen["condition_rates"], refit.condition_rates, perm),
             "shares_2025_frozen_model": shares["share"].tolist(),
             "rates_refit_matched": refit.condition_rates[perm],
             "flags": flags,
         },
         args.results / "forward_2025.json",
     )
-    log(f"ARI, frozen 2016-24 model vs refit on 2025: {score:.3f} ({'pass' if score >= ARI_PASS else 'below the pass line'})")
-    for _, r in shares.iterrows():
-        log(f"  2025 share, class {int(r['class'])}: {r['share']:.1%} (95% CI {r['ci_low']:.1%} to {r['ci_high']:.1%})")
+    verdict = "pass" if score >= ARI_PASS else "below the pass line"
+    log(f"ARI, frozen 2016-24 model vs refit on 2025: {score:.3f} ({verdict})")
+    for _, row in shares.iterrows():
+        log(f"  2025 share, class {int(row['class'])}: {row['share']:.1%} (95% CI {row['ci_low']:.1%} to {row['ci_high']:.1%})")
 
 
 if __name__ == "__main__":

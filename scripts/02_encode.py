@@ -1,47 +1,56 @@
-"""Step 2. Encode the condition flags and build the analysis table.
+"""Step 2 of 8. Turn survey answers into the 0/1 table the clustering methods use.
 
-Reads the interim files from step 1, builds one 0/1 flag per condition,
-applies the prevalence rule on the pooled 2016-2024 sample, and writes
+What happens here
+-----------------
+1. Stack the per-year files from step 1 into one table.
+2. For each condition in the config, build a flag: 1 if the child currently
+   has it, 0 if not, missing if the parent did not answer. The exact rule is
+   in ``nsch_subtypes.data.encode_flag``.
+3. Apply the prevalence rule on the 2016-2024 children: drop any flag that
+   fewer than 1% of them have. (2025 is held out and does not get a vote.)
+4. Write ``data/processed/analysis.parquet`` (one row per child, all years)
+   and ``data/processed/codebook.csv`` (every condition we considered and
+   whether it made it in).
 
-    data/processed/analysis.parquet   one row per selected child, all years
-    data/processed/codebook.csv       every configured item and whether it was kept
+Usage::
 
-2025 rows are encoded with the same rule but do not take part in deciding
-which flags are kept; that year is held out for the forward test.
+    python scripts/02_encode.py
 """
 
 from __future__ import annotations
 
 import pandas as pd
 
-from _common import ANALYSIS, CODEBOOK, INTERIM, MAIN_YEARS, log, parser
+from _common import ANALYSIS_PATH, CODEBOOK_PATH, INTERIM_DIR, MAIN_YEARS, log, make_parser
 from nsch_subtypes.config import load_config
-from nsch_subtypes.data import apply_prevalence_rule, encode
+from nsch_subtypes.data import apply_prevalence_rule, build_analysis_table
 
 
 def main() -> None:
-    p = parser("Encode condition flags from the selected rows", backend=False)
-    args = p.parse_args()  # noqa: F841
+    parser = make_parser("Encode condition flags from the selected rows", backend=False)
+    parser.parse_args()  # no extra options; this keeps --help consistent across scripts
 
     config = load_config()
-    files = sorted(INTERIM.glob("selected_*.parquet"))
-    if not files:
+    interim_files = sorted(INTERIM_DIR.glob("selected_*.parquet"))
+    if not interim_files:
         raise SystemExit("No interim files; run scripts/01_select.py first")
-    raw = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
-    table = encode(raw, config)
 
+    selected_rows = pd.concat([pd.read_parquet(path) for path in interim_files], ignore_index=True)
+    table = build_analysis_table(selected_rows, config)
+
+    # Decide which flags to keep using only the main analysis years.
     main_rows = table[table["year"].isin(list(MAIN_YEARS))]
     kept, codebook = apply_prevalence_rule(main_rows, config)
-    drop = [c.name for c in config.included if c.name not in kept]
-    table = table.drop(columns=drop)
+    dropped = [condition.name for condition in config.included if condition.name not in kept]
+    table = table.drop(columns=dropped)
 
-    table.to_parquet(ANALYSIS, index=False)
-    codebook.to_csv(CODEBOOK, index=False)
+    table.to_parquet(ANALYSIS_PATH, index=False)
+    codebook.to_csv(CODEBOOK_PATH, index=False)
 
     complete = table.dropna(subset=kept)
-    log(f"{len(table)} children across {table['year'].nunique()} years; {len(kept)} flags kept, {len(drop)} dropped by the prevalence rule: {drop}")
+    log(f"{len(table)} children across {table['year'].nunique()} years; {len(kept)} flags kept, {len(dropped)} dropped by the prevalence rule: {dropped}")
     log(f"{len(complete)} rows have every flag answered ({len(table) - len(complete)} with at least one missing)")
-    log(f"wrote {ANALYSIS} and {CODEBOOK}")
+    log(f"wrote {ANALYSIS_PATH} and {CODEBOOK_PATH}")
 
 
 if __name__ == "__main__":

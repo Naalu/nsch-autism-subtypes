@@ -2,6 +2,10 @@
 
 What the pipeline expects from `lca.py`, `hierarchical.py` and (if adopted) `partition.py`. The function signatures and result classes are already in those files with docstrings; the bodies raise `NotImplementedError` until replaced. The pipeline runs against library versions (`--backend reference`) in the meantime, and `tests/test_implementations.py` runs the same checks against both.
 
+If the methods themselves are new to you, `docs/background.md` section 3 explains each one in words before the math below. The module docstrings in the three files repeat the key ideas next to the code.
+
+A good order of work: get `fit_lca` passing its tests first (it is what every later step uses), then `jaccard_distances` and `cluster_hierarchical`, then `cluster_kmeans` if we decide to adopt it. Run `uv run pytest tests/test_implementations.py -v` after every change; a test that is still skipping tells you which function is still a stub.
+
 Ground rules:
 
 - NumPy only inside these three files. SciPy, scikit-learn and StepMix are allowed everywhere else and are what we check against.
@@ -79,8 +83,8 @@ Checks: inertia never increases across iterations; on the synthetic data, ARI ag
 | `04_crosscheck.py` | `cluster_hierarchical` (with `weights`) or `cluster_kmeans` | `--backend ours --method ...` |
 | `05_replicate.py` | `fit_lca` twice | `--backend ours` |
 | `06_bootstrap.py` | `fit_lca` 200 times | `--backend ours` |
-| `08_forward_2025.py` | `fit_lca` once, plus `validate.posterior` to apply the frozen model | `--backend ours` |
+| `08_forward_2025.py` | `fit_lca` once, plus `validate.class_probabilities` to apply the frozen model | `--backend ours` |
 
-`validate.posterior(X, class_sizes, condition_rates)` is a small helper that scores new children under a fixed model (the E-step formula with no update). It exists so the held-out checks can label children with a model fit elsewhere; `fit_lca` should have its own E-step.
+`validate.class_probabilities(X, class_sizes, condition_rates)` is a small helper that scores new children under a fixed model (the E-step formula with no update). It exists so the held-out checks can label children with a model fit elsewhere; `fit_lca` should have its own E-step.
 
 Run the implementation tests with `uv run pytest tests/test_implementations.py -v`. They skip with a clear message while a function still raises `NotImplementedError`.

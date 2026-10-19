@@ -1,27 +1,48 @@
-"""Agglomerative hierarchical clustering with Jaccard distance and average linkage.
+"""Hierarchical clustering: the proposal's second method, written from scratch.
 
-This is the project's cross-check method and is written from scratch (NumPy
-only) as part of the course requirement. ``docs/implementation-spec.md``
-spells out the contract; ``reference.cluster_scipy`` is the library
-implementation the pipeline checks it against.
+Like ``lca.py``, this file holds the result type and the function signatures;
+the algorithm is implemented by the project team (see
+``docs/implementation-spec.md``). ``reference.cluster_scipy`` is the library
+version the pipeline compares against.
 
-Method
-------
-Every child starts as its own group. At each step the two groups with the
-smallest average pairwise distance are merged, until one group remains. The
-merge history is a tree; cutting it to ``n_clusters`` groups gives the labels.
+Why a second method
+-------------------
+If two methods that work on different principles find the same groups, the
+groups are probably a feature of the data and not an artifact of one method.
+Latent class analysis assumes a probability model; hierarchical clustering
+assumes nothing beyond a distance between children. Agreement between them
+is one of the project's checks (step 4).
 
-Jaccard distance between two children is ``1 - |A & B| / |A | B|`` where A and
-B are their sets of flags equal to 1. Two children with no flags at all have
-distance 0 by convention.
+How agglomerative hierarchical clustering works
+-----------------------------------------------
+"Agglomerative" means bottom-up. Every child starts as its own group. At each
+step, find the two groups that are closest together and merge them. Repeat
+until one group is left. Recording the merges gives a tree (a "dendrogram");
+cutting the tree at the right height gives K groups.
 
-Average linkage (UPGMA): the distance between groups is the mean of the
-pairwise distances between their members. With ``weights`` (how many children
-each row stands for), the update after merging A and B is
+Two choices define the method:
 
-    d(A+B, C) = (w_A d(A, C) + w_B d(B, C)) / (w_A + w_B)
+Distance between two children. We use the Jaccard distance on the sets of
+conditions each child has. If child A has {ADHD, anxiety} and child B has
+{ADHD, epilepsy}, they share 1 condition out of 3 distinct ones, so the
+Jaccard similarity is 1/3 and the distance is 1 - 1/3 = 2/3. In general
 
-which is why the pipeline can collapse identical rows first and pass counts.
+    d(A, B) = 1 - |A and B| / |A or B|
+
+Two children with no conditions at all have distance 0 by convention.
+Jaccard ignores conditions that both children lack, which matters here
+because most children lack most of the 18 conditions.
+
+Distance between two groups ("linkage"). We use average linkage, also called
+UPGMA: the distance between groups is the mean of all pairwise distances
+between their members. When each row stands for ``weights[i]`` identical
+children, the exact update after merging groups A and B is
+
+    d(A+B, C) = (w_A * d(A, C) + w_B * d(B, C)) / (w_A + w_B)
+
+which is why the pipeline can collapse the 8,891 children into about 1,350
+distinct condition profiles, pass the counts as weights, and get the same
+answer much faster.
 """
 
 from __future__ import annotations
@@ -33,19 +54,19 @@ import numpy as np
 
 @dataclass
 class HierarchicalResult:
-    """Labels plus the full merge history.
+    """Cluster labels plus the full merge history (the tree).
 
     Attributes
     ----------
     labels : ndarray, shape (n,)
         Cluster index 0..n_clusters-1 for each input row.
     merges : ndarray, shape (n - 1, 4)
-        One row per merge in SciPy linkage format: ``[i, j, distance, size]``
-        where ``i`` and ``j`` are the merged groups (original rows are
-        0..n-1, the group formed by merge ``m`` is ``n + m``) and ``size`` is
-        the number of input rows in the new group. Distances are
-        non-decreasing down the rows. This format lets
-        ``scipy.cluster.hierarchy.dendrogram`` draw the tree directly.
+        One row per merge, in the format SciPy uses so that
+        ``scipy.cluster.hierarchy.dendrogram`` can draw it directly:
+        ``[group_a, group_b, distance, size]``. Original rows are numbered
+        0..n-1 and the group created by merge number ``m`` is numbered
+        ``n + m``. ``size`` is how many original rows the new group holds.
+        Distances never decrease from one row to the next.
     """
 
     labels: np.ndarray
@@ -53,7 +74,18 @@ class HierarchicalResult:
 
 
 def jaccard_distances(X: np.ndarray) -> np.ndarray:
-    """Pairwise Jaccard distance matrix, shape (n, n), for a 0/1 matrix."""
+    """Pairwise Jaccard distances between the rows of a 0/1 matrix.
+
+    Parameters
+    ----------
+    X : ndarray, shape (n, J), values 0 or 1
+
+    Returns
+    -------
+    ndarray, shape (n, n)
+        ``out[i, j]`` is the Jaccard distance between rows i and j. The diagonal
+        is 0 and the matrix is symmetric. Two all-zero rows have distance 0.
+    """
     raise NotImplementedError("jaccard_distances is implemented by the project team; see docs/implementation-spec.md")
 
 
@@ -62,14 +94,17 @@ def cluster_hierarchical(
     n_clusters: int,
     weights: np.ndarray | None = None,
 ) -> HierarchicalResult:
-    """Cluster a 0/1 matrix into ``n_clusters`` groups.
+    """Group the rows of a 0/1 matrix into ``n_clusters`` clusters by average-linkage hierarchical clustering.
 
     Parameters
     ----------
-    X : ndarray, shape (n, J), values 0 or 1, no missing values
-    n_clusters : number of groups to cut the tree into (1 <= n_clusters <= n)
-    weights : optional ndarray, shape (n,), positive counts; row ``i`` stands
-        for ``weights[i]`` identical children. ``None`` means all ones.
+    X : ndarray, shape (n, J)
+        The flag matrix, values 0 or 1, no missing values.
+    n_clusters : int
+        How many groups to cut the tree into (1 <= n_clusters <= n).
+    weights : ndarray, shape (n,), optional
+        Positive counts. Row ``i`` stands for ``weights[i]`` identical children.
+        ``None`` means every row is one child.
 
     Returns
     -------

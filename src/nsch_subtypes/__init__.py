@@ -1,16 +1,22 @@
-"""Subtypes of autistic children in the National Survey of Children's Health.
+"""Do autistic children fall into subtypes based on the other conditions they have?
 
-The package is organized by pipeline step:
+This package holds the reusable pieces of that analysis. The numbered scripts
+in ``scripts/`` string them together; see the README for the overall picture
+and ``docs/background.md`` if the data or the methods are new to you.
 
-- ``config``: reads ``config/conditions.yaml``.
-- ``data``: downloads the Census files, selects autistic children aged 6-17,
-  and encodes the condition flags (steps 1-2).
-- ``lca`` and ``hierarchical``: the two clustering methods, written from
-  scratch for the course (step 3 and step 4).
-- ``reference``: StepMix and SciPy wrappers used to check them.
-- ``validate``: class matching, ARI, bootstrap stability, the count-vs-class
-  test (steps 4-6 and 8).
-- ``describe``: survey-weighted shares and class profiles (step 7).
+Modules, in the order the pipeline uses them:
+
+- ``config``: reads ``config/conditions.yaml``, which lists the survey questions we use.
+- ``data``: downloads the Census files, selects autistic children aged 6 to 17,
+  and turns their answers into 0/1 condition flags (steps 1 and 2).
+- ``lca``: the main clustering method, latent class analysis (step 3).
+- ``hierarchical`` and ``partition``: two alternative methods used as a cross-check (step 4).
+- ``reference``: library versions of all three methods, for comparison and as a fallback.
+- ``backends``: picks "ours" or "reference" by name.
+- ``synthetic``: fake data with known classes, for testing.
+- ``validate``: the checks the clusters have to pass (steps 4, 5, 6, 8, and the count test in 7).
+- ``describe``: national shares and class profiles using survey weights (step 7).
+- ``plots``: the figures.
 """
 
 __version__ = "0.1.0"

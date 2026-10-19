@@ -1,4 +1,14 @@
-"""Pick the clustering implementations by name: ``ours`` or ``reference``."""
+"""Choose between the from-scratch clustering code ("ours") and the library versions ("reference").
+
+Every pipeline script takes ``--backend ours`` or ``--backend reference`` and
+asks this module for the matching functions. The two backends have identical
+signatures and return identical result types, so the rest of the code never
+needs to know which one it is using.
+
+The ``reference`` backend exists for two reasons: it lets the pipeline run
+end to end before the from-scratch code is finished, and it gives the tests
+something trustworthy to compare the from-scratch code against.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +16,7 @@ from collections.abc import Callable
 
 from . import hierarchical, lca, partition, reference
 
+# Method name -> function, for each backend.
 BACKENDS: dict[str, dict[str, Callable]] = {
     "ours": {
         "lca": lca.fit_lca,
@@ -21,7 +32,7 @@ BACKENDS: dict[str, dict[str, Callable]] = {
 
 
 def get_backend(name: str) -> dict[str, Callable]:
-    """Return ``{"lca": ..., "hierarchical": ..., "kmeans": ...}`` for the named backend."""
+    """Return the dictionary ``{"lca": ..., "hierarchical": ..., "kmeans": ...}`` for ``name``."""
     try:
         return BACKENDS[name]
     except KeyError:

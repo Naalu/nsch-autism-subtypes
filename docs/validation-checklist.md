@@ -1,6 +1,8 @@
 # Validation checklist
 
-How this project maps onto the SUbtyping VAlidation Checklist (SUVAC) from Agelink van Rentergem, Deserno and Geurts (2021), who reviewed 156 autism subtyping studies from 2001 to 2020. The right-hand column is the share of those 156 studies that used each strategy. No study used all seven; most used one or two.
+Clustering always produces groups, so a subtyping study has to show that its groups are more than an artifact of one sample and one algorithm. Agelink van Rentergem, Deserno and Geurts (2021) reviewed 156 autism subtyping studies from 2001 to 2020 and distilled the ways of showing that into a seven-item checklist, SUVAC (SUbtyping VAlidation Checklist). The table below says how this project handles each item. The right-hand column is the share of the 156 reviewed studies that used each strategy; no study used all seven, and most used one or two.
+
+The methods named in the table (ARI, bootstrap Jaccard, entropy) are explained in plain language in `docs/background.md` section 4.
 
 | SUVAC item | What it asks | This project | Share of reviewed studies |
 |---|---|---|---|
