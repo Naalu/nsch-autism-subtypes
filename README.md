@@ -1,6 +1,6 @@
 # Do autistic children fall into distinct subtypes?
 
-[![CI](https://github.com/naalu/nsch-autism-subtypes/actions/workflows/ci.yml/badge.svg)](https://github.com/naalu/nsch-autism-subtypes/actions/workflows/ci.yml)
+[![CI](https://github.com/Naalu/nsch-autism-subtypes/actions/workflows/ci.yml/badge.svg)](https://github.com/Naalu/nsch-autism-subtypes/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Clinic-based studies keep reporting three or four "subtypes" of autism based on which other conditions a child has, and almost none of them check whether the groups show up again in a second sample. This project asks the question on nationally representative data: ten years of the National Survey of Children's Health (NSCH, 2016–2025), 11,370 autistic children aged 6–17, and 18 parent-reported co-occurring conditions. We cluster the children with a latent class model written from scratch, then put the classes through checks fixed in advance: a second method has to find the same groups, the groups have to come back in later survey years (including the 2025 file, released after the design was set), each group has to survive resampling, and the groups have to tell us more about parent-rated severity than a plain count of conditions does. If they don't, that is the finding.
@@ -32,7 +32,7 @@ tests/                     run on synthetic data; no download needed
 Needs Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-git clone https://github.com/naalu/nsch-autism-subtypes
+git clone https://github.com/Naalu/nsch-autism-subtypes
 cd nsch-autism-subtypes
 uv sync --group dev
 make test                      # unit tests on synthetic data
