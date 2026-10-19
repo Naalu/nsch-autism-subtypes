@@ -35,11 +35,14 @@ src/nsch_subtypes/           the package
   partition.py               k-means on the flags, from scratch (alternative for step 4)
   reference.py               StepMix, SciPy and scikit-learn versions, used to check ours
   validate.py                agreement, replication, stability, and the count-vs-class test
+  latent_trait.py            the continuous alternative: a two-dimensional binary factor model
   describe.py                survey-weighted national shares with confidence intervals
   plots.py                   the figures
-scripts/01_select.py ... 08_forward_2025.py   one pipeline step each
+scripts/01_select.py ... 12_dimensions.py     one pipeline step each; sweep_k.sh and make_results_figures.py tie them together
 data/processed/              the analysis table (committed), codebook, selection counts
 reports/data-overview.md     the data in raw and processed form, with figures
+reports/figures/results/     the results figures (classes, severity, loadings, checks by K, BIC curves)
+paper/                       outline and draft sections
 docs/background.md           start here if the data or the methods are new to you
 docs/implementation-spec.md  what the from-scratch code has to do, and the tests it has to pass
 docs/validation-checklist.md how the design maps onto the SUVAC subtyping checklist; related results
@@ -76,8 +79,14 @@ The survey can also be read through the [nsch](https://github.com/NAU-ASD3/nsch-
 | 6 Resample | `06_bootstrap.py` | 200 bootstrap refits; how much of each class comes back | mean Jaccard ≥ 0.75 |
 | 7 Describe | `07_describe.py` | Weighted national share of each class with 95% CI; severity, age and sex by class; count-vs-class test | |
 | 8 Forward | `08_forward_2025.py` | Frozen 2016 to 2024 model against a fresh fit on 2025 | ARI ≥ 0.65 |
+| 9 Age bands | `09_age_bands.py` | Refit within ages 6 to 11 and 12 to 17; compare with the pooled classes | ARI ≥ 0.65 |
+| 10 Parallel | `10_parallel_ever.py` | Refit on flags built from the "ever told" items | ARI ≥ 0.65 |
+| 11 Robustness | `11_robustness.py` | Survey-weighted fit, dropped-children comparison, seed sensitivity | |
+| 12 Dimensions | `12_dimensions.py` | One- and two-dimensional latent trait models against the classes; simulated continuum | |
 
-Steps 1 to 3 are a complete project on their own. Steps 4, 5, 6 and 8 are independent checks of the classes from step 3. Step 7 turns the result into national numbers. Survey weights are used in steps 7 and 8 only, to describe the classes, never to fit them.
+`scripts/sweep_k.sh 4 5` reruns steps 4 to 12 at the given K values into `results_k{K}/`; `scripts/make_results_figures.py` draws the results figures from them.
+
+Steps 1 to 3 are a complete project on their own. Steps 4, 5, 6, 8, 9 and 10 are independent checks of the classes from step 3; 11 and 12 ask whether the modeling choices and the class description itself hold up. Step 7 turns the result into national numbers. Survey weights are used in steps 7 and 8 only, to describe the classes, never to fit them.
 
 The pass lines and the planned null result (the count test) were set in the project proposal on October 13, 2026, before any model was fit. Where they come from is explained in `docs/validation-checklist.md`.
 
@@ -89,9 +98,17 @@ Two things to know up front. The flags are parent reports of a doctor's diagnosi
 
 ## Status
 
-October 2026. Steps 1 and 2 run on the real files. Steps 3 to 8 run end to end with the reference backend; the from-scratch implementations are being written against `docs/implementation-spec.md`. Two design questions are open and documented in `docs/validation-checklist.md`: which second method to use for the cross-check (average linkage on this data puts nearly every child in one cluster), and how to choose K when BIC keeps falling.
+October 19, 2026. All steps run end to end on the real files with the reference backend; the from-scratch implementations are being written against `docs/implementation-spec.md` and every number below will be re-verified with them.
 
-Results will be committed to `results/` when the analysis freezes (planned: November 13, 2026).
+What the first full run found (details and figures in `docs/validation-checklist.md` and `reports/figures/results/`):
+
+- BIC kept falling through K=8, so K was chosen after the fact as the largest K at which every class is bootstrap-stable and held-out replication passes. That is K=4.
+- The four classes are the corners of two near-independent axes, developmental-language and psychiatric: few other conditions (34% of U.S. autistic children aged 6 to 17), developmental-language (33%), psychiatric (18%), both (16%).
+- They replicate across survey years (ARI 0.72), in the 2025 file released after the design was fixed (0.79), within age bands (0.70, 0.78), under the "ever told" items (0.66), and under resampling (Jaccard 0.91 or better). The second-method check fails (k-means ARI 0.57); no distance-based method finds cluster geometry in this data.
+- Parent-rated severity follows the developmental-language axis and not the psychiatric one.
+- A two-dimensional latent trait model fits better than any number of classes (BIC 105,298 against 106,428 for K=4), and data simulated from it reproduce the latent class BIC curve. The result is best described as two dimensions, not four subtypes.
+
+Dates: analysis freeze November 13, 2026; paper and final presentation dates to be added. The data are public-use files with no identifiers; no IRB review was required.
 
 ## Methods and sources
 
