@@ -1,0 +1,5 @@
+class,dev_score,psych_score,name,n,share_unweighted
+0,0.71,0.767,developmental and psychiatric,1535,0.173
+1,0.759,0.305,developmental-language,2590,0.291
+2,0.158,0.236,few other conditions,2853,0.321
+3,0.139,0.681,psychiatric,1913,0.215

@@ -1,0 +1,5 @@
+K,second method (k-means),held-out years,2025 forward test,age 6-11 refit,age 12-17 refit,'ever told' items,least stable class (Jaccard)
+4,0.574,0.717,0.792,0.698,0.782,0.662,0.906
+5,0.534,0.646,0.752,0.768,0.831,0.671,0.619
+6,0.44,0.533,0.595,,,,0.547
+8,0.522,0.458,0.496,,,,0.549
