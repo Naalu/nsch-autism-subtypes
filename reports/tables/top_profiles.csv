@@ -1,0 +1,11 @@
+profile,n_children
+(none),517
+"dev_delay, speech, learning",219
+adhd,210
+anxiety,202
+"behavior, dev_delay, speech, learning",197
+"adhd, behavior",174
+"adhd, anxiety, behavior",159
+"adhd, anxiety, behavior, dev_delay, speech, learning",156
+"adhd, anxiety",147
+"adhd, anxiety, depression, behavior",129

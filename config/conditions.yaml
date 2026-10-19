@@ -1,0 +1,211 @@
+# Condition items from the NSCH topical file, 2016-2025.
+#
+# Each entry maps one analysis flag to the raw variables it is built from.
+# `ever` is the "has a doctor or other health care provider EVER told you
+# that this child has ..." item (1 = yes, 2 = no). `currently` is the
+# follow-up "does this child CURRENTLY have the condition?" item, asked only
+# when `ever` is yes. Conditions that are lifelong or structural have no
+# follow-up item, so the flag is built from `ever` alone.
+#
+# Flag coding: 1 if the child currently has the condition, 0 if not, missing
+# if the parent did not answer. See nsch_subtypes.data.encode for the exact rule.
+#
+# `include: false` records items we audited and left out, with the reason.
+# Items with `include: true` are still subject to the prevalence rule in
+# scripts/02_encode.py (default: at least 1% of the pooled autistic sample).
+#
+# Sources: the per-year Stata .do files from Census and the CAHMI
+# 2016-present variable crosswalk (childhealthdata.org), checked against the
+# files themselves. Years listed are the years the item was asked.
+
+min_prevalence: 0.01
+
+conditions:
+  - name: adhd
+    label: ADD/ADHD
+    ever: k2q31a
+    currently: k2q31b
+    years: 2016-2025
+    include: true
+
+  - name: anxiety
+    label: Anxiety problems
+    ever: k2q33a
+    currently: k2q33b
+    years: 2016-2025
+    include: true
+
+  - name: depression
+    label: Depression
+    ever: k2q32a
+    currently: k2q32b
+    years: 2016-2025
+    include: true
+
+  - name: behavior
+    label: Behavioral or conduct problems
+    ever: k2q34a
+    currently: k2q34b
+    years: 2016-2025
+    include: true
+
+  - name: dev_delay
+    label: Developmental delay
+    ever: k2q36a
+    currently: k2q36b
+    years: 2016-2025
+    include: true
+
+  - name: intellectual
+    label: Intellectual disability
+    ever: k2q60a
+    currently: k2q60b
+    years: 2016-2025
+    include: true
+
+  - name: speech
+    label: Speech or other language disorder
+    ever: k2q37a
+    currently: k2q37b
+    years: 2016-2025
+    include: true
+
+  - name: learning
+    label: Learning disability
+    ever: k2q30a
+    currently: k2q30b
+    years: 2016-2025
+    include: true
+    note: The 2018 questionnaire changed "condition" to "disability" in the follow-up wording; the question itself did not change.
+
+  - name: tourette
+    label: Tourette syndrome
+    ever: k2q38a
+    currently: k2q38b
+    years: 2016-2025
+    include: true
+
+  - name: asthma
+    label: Asthma
+    ever: k2q40a
+    currently: k2q40b
+    years: 2016-2025
+    include: true
+
+  - name: epilepsy
+    label: Epilepsy or seizure disorder
+    ever: k2q42a
+    currently: k2q42b
+    years: 2016-2025
+    include: true
+
+  - name: headache
+    label: Frequent or severe headaches, including migraine
+    ever: headache
+    currently: headache_curr
+    years: 2016-2025
+    include: true
+
+  - name: heart
+    label: Heart condition
+    ever: heart
+    currently: heart_curr
+    years: 2016-2025
+    include: true
+
+  - name: cerebral_palsy
+    label: Cerebral palsy
+    ever: k2q61a
+    currently: null
+    years: 2016-2025
+    include: true
+    note: The "currently" follow-up (k2q61b) was dropped in 2022, so the flag uses the "ever" item in every year.
+
+  - name: blood
+    label: Blood disorder (sickle cell, thalassemia, hemophilia)
+    ever: blood
+    currently: null
+    years: 2016-2025
+    include: true
+
+  - name: down_syndrome
+    label: Down syndrome
+    ever: downsyn
+    currently: null
+    years: 2016-2025
+    include: true
+
+  - name: deafness
+    label: Deafness or problems with hearing
+    ever: k2q43b
+    currently: null
+    years: 2016-2025
+    include: true
+
+  - name: blindness
+    label: Blindness or problems with seeing
+    ever: blindness
+    currently: null
+    years: 2016-2025
+    include: true
+
+  - name: cystic_fibrosis
+    label: Cystic fibrosis
+    ever: cystfib
+    currently: null
+    years: 2016-2025
+    include: true
+    note: Asked every year, but far below the prevalence rule (about 0.1% of the autistic sample).
+
+  - name: allergies
+    label: Allergies
+    ever: allergies
+    currently: allergies_curr
+    years: 2016-2025
+    include: false
+    reason: Question wording changed in 2022 ("including food, drug, insect, or other" became "such as food, drug, insect, seasonal, or other"). Adding "seasonal" plausibly changes who answers yes.
+
+  - name: diabetes
+    label: Diabetes
+    ever: diabetes
+    currently: diabetes_curr
+    years: 2022-2025
+    include: false
+    reason: Added to the survey in 2022.
+
+  - name: arthritis
+    label: Arthritis
+    ever: arthritis
+    currently: null
+    years: 2016-2021
+    include: false
+    reason: Dropped from the survey in 2022.
+
+  - name: genetic
+    label: Other genetic or inherited condition
+    ever: genetic
+    currently: null
+    years: 2016-2022
+    include: false
+    reason: Dropped from the survey in 2023.
+
+  - name: brain_injury
+    label: Brain injury, concussion or head injury
+    ever: k2q46a
+    currently: null
+    years: 2016-2019
+    include: false
+    reason: Dropped from the survey in 2020.
+
+# Variables carried alongside the flags. None of these are inputs to the clustering.
+keys:
+  year: year
+  household: hhid
+  age: sc_age_years
+  sex: sc_sex              # 1 = male, 2 = female
+  weight: fwc              # child weight; divide by the number of pooled years when pooling
+  stratum: stratum
+  state: fipsst
+  asd_ever: k2q35a
+  asd_current: k2q35b
+  asd_severity: k2q35c     # 1 = mild, 2 = moderate, 3 = severe (parent-rated)

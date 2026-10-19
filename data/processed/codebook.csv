@@ -1,0 +1,25 @@
+flag,label,ever_item,currently_item,years_asked,kept,prevalence,missing,reason,note
+adhd,ADD/ADHD,k2q31a,k2q31b,2016-2025,True,0.5244,0.0038,,
+anxiety,Anxiety problems,k2q33a,k2q33b,2016-2025,True,0.5142,0.0204,,
+depression,Depression,k2q32a,k2q32b,2016-2025,True,0.1965,0.0094,,
+behavior,Behavioral or conduct problems,k2q34a,k2q34b,2016-2025,True,0.5296,0.0105,,
+dev_delay,Developmental delay,k2q36a,k2q36b,2016-2025,True,0.5609,0.0118,,
+intellectual,Intellectual disability,k2q60a,k2q60b,2016-2025,True,0.1693,0.0053,,
+speech,Speech or other language disorder,k2q37a,k2q37b,2016-2025,True,0.4043,0.0067,,
+learning,Learning disability,k2q30a,k2q30b,2016-2025,True,0.5559,0.0091,,"The 2018 questionnaire changed ""condition"" to ""disability"" in the follow-up wording; the question itself did not change."
+tourette,Tourette syndrome,k2q38a,k2q38b,2016-2025,True,0.0188,0.005,,
+asthma,Asthma,k2q40a,k2q40b,2016-2025,True,0.1254,0.0091,,
+epilepsy,Epilepsy or seizure disorder,k2q42a,k2q42b,2016-2025,True,0.0421,0.0058,,
+headache,"Frequent or severe headaches, including migraine",headache,headache_curr,2016-2025,True,0.0752,0.0042,,
+heart,Heart condition,heart,heart_curr,2016-2025,True,0.0326,0.003,,
+cerebral_palsy,Cerebral palsy,k2q61a,,2016-2025,True,0.0145,0.0061,,"The ""currently"" follow-up (k2q61b) was dropped in 2022, so the flag uses the ""ever"" item in every year."
+blood,"Blood disorder (sickle cell, thalassemia, hemophilia)",blood,,2016-2025,True,0.01,0.0019,,
+down_syndrome,Down syndrome,downsyn,,2016-2025,True,0.0107,0.0029,,
+deafness,Deafness or problems with hearing,k2q43b,,2016-2025,True,0.0327,0.0072,,
+blindness,Blindness or problems with seeing,blindness,,2016-2025,True,0.044,0.006,,
+cystic_fibrosis,Cystic fibrosis,cystfib,,2016-2025,False,0.0012,0.0024,prevalence 0.12% below 1%,"Asked every year, but far below the prevalence rule (about 0.1% of the autistic sample)."
+allergies,Allergies,allergies,allergies_curr,2016-2025,False,,,"Question wording changed in 2022 (""including food, drug, insect, or other"" became ""such as food, drug, insect, seasonal, or other""). Adding ""seasonal"" plausibly changes who answers yes.",
+diabetes,Diabetes,diabetes,diabetes_curr,2022-2025,False,,,Added to the survey in 2022.,
+arthritis,Arthritis,arthritis,,2016-2021,False,,,Dropped from the survey in 2022.,
+genetic,Other genetic or inherited condition,genetic,,2016-2022,False,,,Dropped from the survey in 2023.,
+brain_injury,"Brain injury, concussion or head injury",k2q46a,,2016-2019,False,,,Dropped from the survey in 2020.,
