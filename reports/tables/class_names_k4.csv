@@ -1,5 +1,5 @@
-class,dev_score,psych_score,name,n,share_unweighted
-0,0.71,0.767,developmental and psychiatric,1535,0.173
-1,0.759,0.305,developmental-language,2590,0.291
-2,0.158,0.236,few other conditions,2853,0.321
-3,0.139,0.681,psychiatric,1913,0.215
+class,dev_marker_rate,psych_marker_rate,name,n_children_modal,weighted_share
+0,0.71,0.767,developmental and psychiatric,1535,0.157
+1,0.759,0.305,developmental-language,2590,0.328
+2,0.158,0.236,fewer co-occurring conditions,2853,0.34
+3,0.139,0.681,psychiatric,1913,0.176

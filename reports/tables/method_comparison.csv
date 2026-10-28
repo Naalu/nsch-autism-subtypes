@@ -1,0 +1,8 @@
+method,ari_all,ari_posterior_0.7,ari_posterior_0.8,ari_posterior_0.9,largest_cluster_share,cluster_sizes
+k-means on the flags,0.574,0.746,0.844,0.988,0.278,"[2469, 2292, 2135, 1995]"
+k-means on the first two principal components,0.52,0.649,0.646,0.771,0.279,"[2485, 2388, 2056, 1962]"
+"Ward linkage, Euclidean",0.241,0.325,0.383,0.409,0.43,"[3819, 1768, 1697, 1607]"
+"average linkage, Jaccard",-0.005,-0.004,-0.003,0.006,0.938,"[8337, 517, 34, 3]"
+"complete linkage, Jaccard",0.028,0.025,0.021,0.027,0.707,"[6283, 1267, 939, 402]"
+"average linkage, prevalence-weighted Jaccard",-0.008,-0.0,0.001,0.016,0.9,"[8001, 517, 292, 81]"
+"spectral clustering, 30-nearest-neighbor Jaccard graph",-0.0,0.003,0.006,0.03,0.889,"[7901, 517, 405, 68]"
