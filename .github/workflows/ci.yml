@@ -18,3 +18,16 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest -q
+
+  # Runs every pipeline script once at tiny settings against the committed
+  # analysis table, so a script that breaks at runtime fails CI.
+  pipeline-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - run: uv sync --group dev
+      - run: uv run pytest -q -m slow

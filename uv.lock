@@ -676,7 +676,7 @@ requires-dist = [
     { name = "scikit-learn", specifier = ">=1.4" },
     { name = "scipy", specifier = ">=1.12" },
     { name = "statsmodels", specifier = ">=0.14" },
-    { name = "stepmix", specifier = ">=2.2" },
+    { name = "stepmix", specifier = ">=3.0,<4" },
 ]
 provides-extras = ["nsch"]
 

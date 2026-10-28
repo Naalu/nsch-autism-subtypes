@@ -16,7 +16,7 @@ dependencies = [
     "scipy>=1.12",
     "scikit-learn>=1.4",
     "statsmodels>=0.14",
-    "stepmix>=2.2",
+    "stepmix>=3.0,<4",  # results were produced with 3.0; get_parameters() layout is version-specific
     "pyyaml>=6",
     "matplotlib>=3.8",
 ]
@@ -51,4 +51,6 @@ select = ["E", "F", "I", "W", "B", "UP"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "scripts"]
+markers = ["slow: runs the pipeline scripts end to end (about 5 minutes); run with -m slow"]
+addopts = "-m 'not slow'"
