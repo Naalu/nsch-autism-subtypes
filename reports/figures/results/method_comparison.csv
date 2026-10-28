@@ -1,9 +1,0 @@
-method,ari_vs_latent_classes,largest_cluster_share,cluster_sizes
-"k-means, Euclidean on flags",0.574,0.278,"[2471, 2292, 2133, 1995]"
-k-means on first two principal components,0.52,0.279,"[2485, 2388, 2056, 1962]"
-"Ward linkage, Euclidean",0.366,0.508,"[4517, 1617, 1473, 1284]"
-"average linkage, Jaccard",-0.005,0.941,"[8364, 517, 7, 3]"
-"complete linkage, Jaccard",0.0,1.0,"[8891, 0, 0, 0]"
-"average linkage, inverse-prevalence weighted Jaccard",-0.007,0.87,"[7734, 560, 517, 80]"
-"spectral clustering, 30-NN Jaccard graph",-0.0,0.889,"[7901, 517, 405, 68]"
-distance facts,,,97 distinct Jaccard values; 26% of pairs at distance 1; 1347 distinct rows; 517 all-zero rows

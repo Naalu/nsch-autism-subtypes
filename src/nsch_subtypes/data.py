@@ -279,6 +279,11 @@ def build_analysis_table(selected: pd.DataFrame, config: Config) -> pd.DataFrame
     )
     for condition in config.included:
         table[condition.name] = encode_flag(selected, condition)
+    # The "ever told" answer alone, kept for the parallel-items check (step 10):
+    # 1 = yes, 0 = no, NaN = no answer. Never used to fit the main model.
+    for condition in config.included:
+        ever = selected[condition.ever]
+        table[f"ever_{condition.name}"] = np.where(ever == YES, 1.0, np.where(ever == NO, 0.0, np.nan))
     return table.reset_index(drop=True)
 
 

@@ -1,4 +1,4 @@
-"""Step 2 of 8. Turn survey answers into the 0/1 table the clustering methods use.
+"""Step 2 of 14. Turn survey answers into the 0/1 table the clustering methods use.
 
 What happens here
 -----------------
@@ -42,9 +42,13 @@ def main() -> None:
     main_rows = table[table["year"].isin(list(MAIN_YEARS))]
     kept, codebook = apply_prevalence_rule(main_rows, config)
     dropped = [condition.name for condition in config.included if condition.name not in kept]
-    table = table.drop(columns=dropped)
+    table = table.drop(columns=dropped + [f"ever_{name}" for name in dropped])
 
-    table.to_parquet(ANALYSIS_PATH, index=False)
+    # Write to a temporary name and then rename, so a script that is reading the
+    # table while this runs never sees a half-written file.
+    partial_path = ANALYSIS_PATH.with_suffix(".parquet.partial")
+    table.to_parquet(partial_path, index=False)
+    partial_path.replace(ANALYSIS_PATH)
     codebook.to_csv(CODEBOOK_PATH, index=False)
 
     complete = table.dropna(subset=kept)
