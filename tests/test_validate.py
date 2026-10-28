@@ -2,15 +2,21 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 
-from nsch_subtypes.describe import class_shares, design_strata, weighted_mean_with_se
+from nsch_subtypes.describe import class_profiles, class_shares, design_strata, weighted_mean_with_se
 from nsch_subtypes.validate import (
     adjusted_rand_index,
+    ari_with_interval,
+    bivariate_residuals,
     bootstrap_stability,
+    class_model_log_likelihood,
+    class_model_pair_probabilities,
     class_probabilities,
     match_classes,
     mean_rate_difference,
     relabel_to_match,
+    severity_count_vs_class,
     shuffle_each_column,
 )
 
@@ -88,3 +94,69 @@ def test_class_shares_sum_to_one_and_intervals_contain_the_estimate():
     assert np.isclose(shares["share"].sum(), 1.0)
     assert (shares["ci_low"] <= shares["share"]).all() and (shares["share"] <= shares["ci_high"]).all()
     assert design_strata(table).max() == 4, "five states, one stratum each, one year"
+
+
+def test_match_classes_refuses_models_with_different_numbers_of_classes():
+    with pytest.raises(ValueError):
+        match_classes(np.zeros((3, 4)), np.zeros((4, 4)))
+
+
+def test_ari_interval_brackets_the_estimate_and_confident_subset_is_reported():
+    rng = np.random.default_rng(0)
+    truth = np.repeat([0, 1, 2], 200)
+    noisy = np.where(rng.random(truth.size) < 0.2, rng.integers(0, 3, truth.size), truth)
+    confidence = np.where(noisy == truth, 0.95, 0.5)  # pretend the disagreements are the unsure children
+    out = ari_with_interval(truth, noisy, confidence_a=confidence, n_boot=200)
+    assert out["ci_low"] <= out["ari"] <= out["ci_high"]
+    assert out["ari_confident"] == 1.0
+    assert 0.8 < out["share_confident"] < 0.95
+    levels = [row["min_posterior"] for row in out["ari_by_confidence"]]
+    assert levels == sorted(levels) and all(row["ari"] == 1.0 for row in out["ari_by_confidence"])
+
+
+def test_one_class_likelihood_is_the_independent_items_formula():
+    """With K = 1 a latent class model is just J independent coin flips, which has a closed form."""
+    rng = np.random.default_rng(1)
+    X = (rng.random((500, 4)) < [0.1, 0.3, 0.5, 0.7]).astype(np.uint8)
+    p = X.mean(axis=0)
+    by_hand = (X * np.log(p) + (1 - X) * np.log(1 - p)).sum()
+    assert np.isclose(class_model_log_likelihood(X, np.array([1.0]), p[None, :]), by_hand)
+    assert class_model_log_likelihood(X, np.array([1.0]), p[None, :], per_child=True).shape == (500,)
+
+
+def test_bivariate_residuals_flag_a_pair_the_model_cannot_explain():
+    """Items 0 and 1 are copies of each other; a one-class model (independence) should fail that pair and only that pair."""
+    rng = np.random.default_rng(2)
+    X = (rng.random((2000, 4)) < 0.3).astype(np.uint8)
+    X[:, 1] = X[:, 0]
+    single, joint = class_model_pair_probabilities(np.array([1.0]), X.mean(axis=0)[None, :])
+    table = bivariate_residuals(X, single, joint, ["a", "b", "c", "d"])
+    assert (table.loc[0, "item_a"], table.loc[0, "item_b"]) == ("a", "b")
+    assert table.loc[0, "chi_square"] > 100
+    assert (table.loc[1:, "chi_square"] < 15).all()
+
+
+def test_class_profiles_keep_a_row_for_an_empty_class():
+    X = np.array([[1, 0], [0, 1], [1, 1]])
+    profiles = class_profiles(X, np.array([0, 0, 2]), ["a", "b"], n_classes=3)
+    assert len(profiles) == 3
+    assert profiles.loc[1, "n"] == 0 and profiles.loc[1, ["a", "b"]].isna().all()
+    assert profiles.loc[0, "a"] == 0.5
+
+
+def test_severity_test_detects_classes_that_carry_information_beyond_the_count():
+    """Plant an effect where class 1 is rated more severe than class 0 at the same condition count."""
+    rng = np.random.default_rng(3)
+    n = 1500
+    labels = rng.integers(0, 2, n)
+    flags = [f"f{j}" for j in range(4)]
+    X = (rng.random((n, 4)) < 0.4).astype(int)
+    latent = 0.3 * X.sum(axis=1) + 1.5 * labels + rng.logistic(size=n)
+    severity = np.select([latent < 1.0, latent < 2.5], ["mild", "moderate"], "severe")
+    table = pd.DataFrame(X, columns=flags).assign(severity=severity, sex=np.where(rng.random(n) < 0.2, "female", "male"), age=rng.integers(6, 18, n))
+    table.loc[:20, "severity"] = None  # a few unrated children are dropped, not miscounted
+
+    out = severity_count_vs_class(table, labels, flags, n_folds=3).set_index("model")
+    assert out.loc["both", "bic"] < out.loc["count", "bic"]
+    assert out.loc["both", "cv_log_loss"] < out.loc["count", "cv_log_loss"]
+    assert out.loc["count", "bic_vs_count"] == 0
