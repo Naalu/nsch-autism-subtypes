@@ -1,4 +1,4 @@
-"""Step 1 of 8. Pick out the children we study from each year's survey file.
+"""Step 1 of 14. Pick out the children we study from each year's survey file.
 
 What happens here
 -----------------

@@ -1,21 +1,16 @@
-"""Latent class analysis: the project's main clustering method, written from scratch.
+"""Latent class analysis: the project's main clustering method, to be written from scratch.
 
 This file holds the result type and the function signature. The algorithm
 itself is implemented by the project team as a course requirement (see
 ``docs/implementation-spec.md``). Until then ``fit_lca`` raises
-``NotImplementedError`` and the pipeline falls back to ``--backend reference``,
-which uses the StepMix library (``reference.fit_lca_stepmix``).
+``NotImplementedError``, and the scripts stop with a message asking for
+``--backend reference``, which uses the StepMix library
+(``reference.fit_lca_stepmix``).
 
-What a latent class model is, in plain terms
---------------------------------------------
-Suppose there are K hidden "types" of children. Each type has its own
-probability of having each condition: type A might have a 90% chance of
-ADHD and a 10% chance of epilepsy, type B the reverse. We never see the
-type; we only see each child's row of 0s and 1s. The model asks: what K
-types, with what sizes and condition probabilities, would most plausibly
-have produced the rows we see?
-
-In symbols, child ``i`` has flags ``x_i1 ... x_iJ``. Class ``k`` has size
+The model
+---------
+``docs/background.md`` explains the idea in plain language. In symbols,
+child ``i`` has flags ``x_i1 ... x_iJ``. Class ``k`` has size
 ``pi_k`` (the ``pi_k`` sum to 1) and condition rates ``theta_kj``. Within a
 class the flags are treated as independent coin flips ("local independence"),
 so the probability of child ``i``'s row is

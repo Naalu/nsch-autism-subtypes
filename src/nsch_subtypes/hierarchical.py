@@ -1,4 +1,4 @@
-"""Hierarchical clustering: the proposal's second method, written from scratch.
+"""Hierarchical clustering: the proposal's second method, to be written from scratch.
 
 Like ``lca.py``, this file holds the result type and the function signatures;
 the algorithm is implemented by the project team (see

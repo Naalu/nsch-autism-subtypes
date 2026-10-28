@@ -1,27 +1,9 @@
 """Read ``config/conditions.yaml``, the one file that says which survey questions we use.
 
-Why a config file at all
-------------------------
-The survey asks about roughly two dozen health conditions, and not all of
-them are usable: some were added or dropped partway through 2016-2025, one
-changed its wording, and one is too rare to cluster on. Rather than bury
-those decisions in code, the YAML file lists every condition we looked at,
-whether it is in or out, and why. This module turns that file into two
-small Python objects (``Condition`` and ``Config``) that the rest of the
-package reads from.
-
-A quick look at the YAML::
-
-    - name: adhd              # short name used as a column in our tables
-      label: ADD/ADHD         # human-readable label for figures
-      ever: k2q31a            # survey item: "has a doctor EVER told you ..."
-      currently: k2q31b       # follow-up item: "does the child CURRENTLY have it?"
-      years: 2016-2025        # years the question was asked
-      include: true           # use it in the analysis
-
-The survey item names like ``k2q31a`` are the Census Bureau's own variable
-names. They look cryptic but they are stable across years, which is what
-makes a multi-year analysis possible.
+The YAML file lists every condition we considered, whether it is in or out,
+and why; its header comments explain each field. This module turns it into
+two small objects, ``Condition`` (one entry) and ``Config`` (the whole file),
+that the rest of the package reads from.
 """
 
 from __future__ import annotations

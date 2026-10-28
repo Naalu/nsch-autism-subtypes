@@ -1,4 +1,4 @@
-"""Step 8 of 8. The forward test: a survey year nobody had seen when the analysis was designed.
+"""Step 8 of 14. The forward test: a survey year nobody had seen when the analysis was designed.
 
 The 2025 NSCH file was released by Census on October 5, 2026, after this
 project's design and pass lines were fixed. That makes it the cleanest
@@ -25,12 +25,12 @@ Usage::
 
 from __future__ import annotations
 
-from _common import backend_or_exit, load_analysis, load_lca_fit, log, make_parser, read_best_k, save_json
+from _common import backend_or_exit, load_analysis, load_lca_fit, log, make_parser, resolve_k, save_json
 from nsch_subtypes.data import to_flag_matrix
 from nsch_subtypes.describe import class_shares
 from nsch_subtypes.validate import (
     ARI_PASS,
-    adjusted_rand_index,
+    ari_with_interval,
     class_probabilities,
     match_classes,
     mean_rate_difference,
@@ -41,26 +41,26 @@ from nsch_subtypes.validate import (
 def main() -> None:
     parser = make_parser("Forward test on 2025")
     parser.add_argument("--n-starts", type=int, default=20)
-    parser.add_argument("--k", type=int, default=None, help="override the K chosen in step 3")
+    parser.add_argument("--k", type=int, default=None, help="number of classes (default: the choice from step 13)")
     args = parser.parse_args()
 
     fit_lca = backend_or_exit(args.backend, "lca")["lca"]
-    k = args.k or read_best_k(args.results)
-    frozen = load_lca_fit(args.results, k)
-
+    k = resolve_k(args)
     table, flags = load_analysis([2025])
+    frozen = load_lca_fit(args.results, k, flags=flags)  # fit on 2016-24, so only the conditions are checked
     flag_matrix = to_flag_matrix(table, flags)
     log(f"{flag_matrix.shape[0]} children in 2025 with every flag answered; K={k}")
 
     # 1. The frozen model's view of the 2025 children.
-    frozen_probabilities = class_probabilities(flag_matrix, frozen["class_sizes"], frozen["condition_rates"])
+    frozen_probabilities = class_probabilities(flag_matrix, frozen.class_sizes, frozen.condition_rates)
     frozen_labels = frozen_probabilities.argmax(axis=1)
 
     # 2 and 3. A fresh fit, matched to the frozen classes, then compared.
     refit = fit_lca(flag_matrix, k, n_starts=args.n_starts, seed=args.seed)
-    perm = match_classes(frozen["condition_rates"], refit.condition_rates)
+    perm = match_classes(frozen.condition_rates, refit.condition_rates)
     refit_labels = relabel_to_match(refit.labels, perm)
-    score = adjusted_rand_index(frozen_labels, refit_labels)
+    agreement = ari_with_interval(frozen_labels, refit_labels, frozen_probabilities.max(axis=1), refit.responsibilities.max(axis=1), seed=args.seed)
+    score = agreement["ari"]
 
     # 4. Weighted shares for a single year, so pooled_years=1.
     shares = class_shares(table, frozen_probabilities, pooled_years=1)
@@ -71,10 +71,10 @@ def main() -> None:
             "k": k,
             "backend": args.backend,
             "n_2025": int(flag_matrix.shape[0]),
-            "ari": score,
+            **agreement,
             "pass": score >= ARI_PASS,
             "pass_line": ARI_PASS,
-            "mean_abs_rate_difference_per_class": mean_rate_difference(frozen["condition_rates"], refit.condition_rates, perm),
+            "mean_abs_rate_difference_per_class": mean_rate_difference(frozen.condition_rates, refit.condition_rates, perm),
             "shares_2025_frozen_model": shares["share"].tolist(),
             "rates_refit_matched": refit.condition_rates[perm],
             "flags": flags,
@@ -82,7 +82,8 @@ def main() -> None:
         args.results / "forward_2025.json",
     )
     verdict = "pass" if score >= ARI_PASS else "below the pass line"
-    log(f"ARI, frozen 2016-24 model vs refit on 2025: {score:.3f} ({verdict})")
+    log(f"ARI, frozen 2016-24 model vs refit on 2025: {score:.3f} (95% interval {agreement['ci_low']:.3f} to {agreement['ci_high']:.3f}; {verdict})")
+    log(f"   among the {agreement['share_confident']:.0%} of children both models classify with probability >= 0.8: ARI {agreement['ari_confident']:.3f}")
     for _, row in shares.iterrows():
         log(f"  2025 share, class {int(row['class'])}: {row['share']:.1%} (95% CI {row['ci_low']:.1%} to {row['ci_high']:.1%})")
 

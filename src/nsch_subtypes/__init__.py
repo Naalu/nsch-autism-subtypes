@@ -14,9 +14,12 @@ Modules, in the order the pipeline uses them:
 - ``reference``: library versions of all three methods, for comparison and as a fallback.
 - ``backends``: picks "ours" or "reference" by name.
 - ``synthetic``: fake data with known classes, for testing.
-- ``validate``: the checks the clusters have to pass (steps 4, 5, 6, 8, and the count test in 7).
+- ``validate``: the checks the clusters have to pass (steps 4 to 14), including the
+  severity test in step 7 and the pairwise-fit check in step 12.
 - ``describe``: national shares and class profiles using survey weights (step 7).
-- ``plots``: the figures.
+- ``latent_trait``: the continuous alternative to classes, a model with one to four
+  dimensions instead of K groups (steps 12 and 13).
+- ``plots``: shared figure styling.
 """
 
 __version__ = "0.1.0"

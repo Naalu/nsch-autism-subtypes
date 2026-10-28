@@ -1,4 +1,4 @@
-"""Step 6 of 8. Does each class survive when the sample is shaken?
+"""Step 6 of 14. Does each class survive when the sample is shaken?
 
 What happens here
 -----------------
@@ -32,7 +32,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from _common import MAIN_YEARS, backend_or_exit, load_analysis, load_lca_fit, log, make_parser, read_best_k
+from _common import MAIN_YEARS, backend_or_exit, load_analysis, load_lca_fit, log, make_parser, resolve_k
 from nsch_subtypes.data import to_flag_matrix
 from nsch_subtypes.plots import stability_plot
 from nsch_subtypes.validate import bootstrap_stability, match_classes, relabel_to_match
@@ -42,20 +42,20 @@ def main() -> None:
     parser = make_parser("Bootstrap stability per class")
     parser.add_argument("--n-boot", type=int, default=200, help="number of resamples")
     parser.add_argument("--n-starts", type=int, default=20, help="random starts per refit")
-    parser.add_argument("--k", type=int, default=None, help="override the K chosen in step 3")
+    parser.add_argument("--k", type=int, default=None, help="number of classes (default: the choice from step 13)")
     args = parser.parse_args()
 
     fit_lca = backend_or_exit(args.backend, "lca")["lca"]
-    k = args.k or read_best_k(args.results)
+    k = resolve_k(args)
     table, flags = load_analysis(MAIN_YEARS)
     flag_matrix = to_flag_matrix(table, flags)
-    original = load_lca_fit(args.results, k)
-    original_labels = original["responsibilities"].argmax(axis=1)
+    original = load_lca_fit(args.results, k, table, flags)
+    original_labels = original.labels
 
     def refit_and_relabel(resampled_matrix: np.ndarray, n_classes: int) -> np.ndarray:
         """Fit on a resample and renumber its classes to match the original model's."""
         fit = fit_lca(resampled_matrix, n_classes, n_starts=args.n_starts, seed=args.seed)
-        perm = match_classes(original["condition_rates"], fit.condition_rates)
+        perm = match_classes(original.condition_rates, fit.condition_rates)
         return relabel_to_match(fit.labels, perm)
 
     def report_progress(done: int) -> None:

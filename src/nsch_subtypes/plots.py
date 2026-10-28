@@ -16,14 +16,19 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
-# Colors used throughout, so the figures look like one set.
+# Colors used throughout, so the figures look like one set. Every figure
+# script imports these instead of defining its own.
 RUST = "#b8582a"
 PURPLE = "#6b46c1"
+CYAN = "#0e7490"
+GREEN = "#2f855a"
 INK = "#1f2330"
 GRAY = "#7a8094"
+CLASS_COLORS = ["#b8582a", "#0e7490", "#6b46c1", "#2f855a", "#b7791f", "#9b2c2c", "#2b6cb0", "#4a5568"]
 
 
-def _hide_top_and_right_spines(ax: plt.Axes) -> None:
+def tidy(ax: plt.Axes) -> None:
+    """Hide the top and right frame lines, the house style for every figure."""
     for side in ("top", "right"):
         ax.spines[side].set_visible(False)
 
@@ -58,21 +63,21 @@ def profile_heatmap(profiles: pd.DataFrame, flags: list[str], path: Path, title:
     plt.close(fig)
 
 
-def bic_curve(ks: list[int], bic: list[float], path: Path, null_bic: list[float] | None = None) -> None:
-    """BIC against the number of classes K, with the chosen K shaded and, if given, the shuffled-data curve for comparison."""
+def bic_curve(ks: list[int], bic: list[float], path: Path, null_bic: list[float] | None = None, chosen_k: int | None = None) -> None:
+    """BIC against the number of classes K, with the shuffled-data curve if given, and ``chosen_k`` shaded if given."""
     fig, ax = plt.subplots(figsize=(5.5, 3.4))
     ax.plot(ks, bic, "o-", color=RUST, label="observed data")
     if null_bic is not None:
         ax.plot(ks, null_bic, "s--", color=GRAY, label="columns shuffled (no structure)")
 
-    best = int(np.argmin(bic))
-    ax.axvline(ks[best], color=RUST, alpha=0.3, lw=6)
+    if chosen_k is not None:
+        ax.axvline(chosen_k, color=RUST, alpha=0.3, lw=6)
 
     ax.set_xlabel("number of classes K")
     ax.set_ylabel("BIC (lower is better)")
     ax.set_xticks(ks)
     ax.legend(frameon=False, fontsize=8)
-    _hide_top_and_right_spines(ax)
+    tidy(ax)
     fig.tight_layout()
     fig.savefig(path, dpi=160)
     plt.close(fig)
@@ -94,7 +99,7 @@ def dendrogram_plot(merges: np.ndarray, n_clusters: int, path: Path, title: str 
     ax.set_xlabel("children (tree truncated to the last 40 merges)")
     if title:
         ax.set_title(title, fontsize=10, loc="left")
-    _hide_top_and_right_spines(ax)
+    tidy(ax)
     fig.tight_layout()
     fig.savefig(path, dpi=160)
     plt.close(fig)
@@ -114,7 +119,7 @@ def stability_plot(mean_jaccard: np.ndarray, path: Path) -> None:
     ax.set_xticks(range(n_classes))
     ax.set_xticklabels([f"class {k}" for k in range(n_classes)])
     ax.set_ylabel("mean bootstrap Jaccard")
-    _hide_top_and_right_spines(ax)
+    tidy(ax)
     fig.tight_layout()
     fig.savefig(path, dpi=160)
     plt.close(fig)

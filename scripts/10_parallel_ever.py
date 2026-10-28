@@ -1,4 +1,4 @@
-"""Check 10. Parallel validation: do the classes survive a different operationalization of the same conditions?
+"""Step 10 of 14. Parallel validation: do the classes survive a different operationalization of the same conditions?
 
 Why this check exists
 ---------------------
@@ -34,49 +34,40 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from _common import INTERIM_DIR, MAIN_YEARS, backend_or_exit, load_analysis, load_lca_fit, log, make_parser, read_best_k, save_json
-from nsch_subtypes.config import load_config
-from nsch_subtypes.data import NO, YES, to_flag_matrix
-from nsch_subtypes.validate import adjusted_rand_index, match_classes, mean_rate_difference, relabel_to_match
-
-
-def ever_flags(flags: list[str]) -> pd.DataFrame:
-    """Flags built from the 'ever told' item alone: 1 = yes, 0 = no, NaN = no answer. Indexed by (year, hhid)."""
-    config = load_config()
-    item_of = {c.name: c.ever for c in config.conditions}
-    raw = pd.concat([pd.read_parquet(p) for p in sorted(INTERIM_DIR.glob("selected_*.parquet"))], ignore_index=True)
-    out = pd.DataFrame({"year": raw["year"].astype(int), "hhid": raw["hhid"].astype("int64")})
-    for flag in flags:
-        ever = raw[item_of[flag]]
-        out[flag] = np.where(ever == YES, 1.0, np.where(ever == NO, 0.0, np.nan))
-    return out.set_index(["year", "hhid"])
+from _common import MAIN_YEARS, backend_or_exit, load_analysis, load_lca_fit, log, make_parser, resolve_k, save_json
+from nsch_subtypes.data import to_flag_matrix
+from nsch_subtypes.validate import ARI_PASS, ari_with_interval, match_classes, mean_rate_difference, relabel_to_match
 
 
 def main() -> None:
     parser = make_parser("Parallel validation with the 'ever told' items")
-    parser.add_argument("--k", type=int, default=None, help="override the K chosen in step 3")
+    parser.add_argument("--k", type=int, default=None, help="number of classes (default: the choice from step 13)")
     parser.add_argument("--n-starts", type=int, default=20)
     args = parser.parse_args()
 
     fit_lca = backend_or_exit(args.backend, "lca")["lca"]
-    k = args.k or read_best_k(args.results)
-    main_fit = load_lca_fit(args.results, k)
+    k = resolve_k(args)
     table, flags = load_analysis(MAIN_YEARS)
+    main_fit = load_lca_fit(args.results, k, table, flags)
 
     # Line the 'ever' flags up with the main analysis rows, child for child.
-    ever = ever_flags(flags).loc[list(zip(table["year"], table["hhid"], strict=True))]
-    keep = ~ever[flags].isna().any(axis=1).to_numpy()
+    ever_columns = [f"ever_{flag}" for flag in flags]
+    if not set(ever_columns) <= set(table.columns):
+        raise SystemExit("The analysis table has no 'ever told' columns; rerun scripts/02_encode.py.")
+    ever = table[ever_columns].set_axis(flags, axis=1)
+    keep = ~ever.isna().any(axis=1).to_numpy()
     X_current = to_flag_matrix(table, flags)[keep]
-    X_ever = ever[flags].to_numpy()[keep].astype(np.uint8)
-    main_labels = main_fit["responsibilities"].argmax(axis=1)[keep]
+    X_ever = ever.to_numpy()[keep].astype(np.uint8)
+    main_labels = main_fit.labels[keep]
     mean_current, mean_ever = X_current.sum(1).mean(), X_ever.sum(1).mean()
     log(f"{keep.sum()} of {len(table)} children have every 'ever' item answered; mean conditions current={mean_current:.2f}, ever={mean_ever:.2f}")
 
     ever_fit = fit_lca(X_ever, k, n_starts=args.n_starts, seed=args.seed)
-    perm = match_classes(main_fit["condition_rates"], ever_fit.condition_rates)
+    perm = match_classes(main_fit.condition_rates, ever_fit.condition_rates)
     ever_labels = relabel_to_match(ever_fit.labels, perm)
-    score = adjusted_rand_index(main_labels, ever_labels)
-    gaps = mean_rate_difference(main_fit["condition_rates"], ever_fit.condition_rates, perm)
+    agreement = ari_with_interval(main_labels, ever_labels, main_fit.responsibilities.max(axis=1)[keep], ever_fit.responsibilities.max(axis=1), seed=args.seed)
+    score = agreement["ari"]
+    gaps = mean_rate_difference(main_fit.condition_rates, ever_fit.condition_rates, perm)
 
     profiles = pd.DataFrame(ever_fit.condition_rates[perm], columns=flags)
     profiles.insert(0, "class_size", ever_fit.class_sizes[perm])
@@ -88,19 +79,24 @@ def main() -> None:
             "k": k,
             "backend": args.backend,
             "n": int(keep.sum()),
-            "ari_current_vs_ever": score,
-            "pass": score >= 0.65,
+            **agreement,
+            "pass": score >= ARI_PASS,
+            "pass_line": ARI_PASS,
+            "n_items_differing_between_rules": int((X_current != X_ever).any(axis=0).sum()),
             "mean_abs_rate_difference_per_class": gaps,
             "class_sizes_ever_matched": ever_fit.class_sizes[perm],
-            "class_sizes_current": main_fit["class_sizes"],
+            "class_sizes_current": main_fit.class_sizes,
             "prevalence_current": dict(zip(flags, X_current.mean(0).round(4), strict=True)),
             "prevalence_ever": dict(zip(flags, X_ever.mean(0).round(4), strict=True)),
             "flags": flags,
         },
         args.results / "parallel_ever.json",
     )
-    verdict = "pass" if score >= 0.65 else "below the pass line"
-    log(f"ARI, 'currently has' classes vs 'ever told' classes: {score:.3f} ({verdict}); profile gaps {[round(float(g), 3) for g in gaps]}")
+    verdict = "pass" if score >= ARI_PASS else "below the pass line"
+    log(
+        f"ARI, 'currently has' classes vs 'ever told' classes: {score:.3f} ({agreement['ci_low']:.3f} to {agreement['ci_high']:.3f}; {verdict}); "
+        f"profile gaps {[round(float(g), 3) for g in gaps]}"
+    )
 
 
 if __name__ == "__main__":

@@ -24,6 +24,8 @@ Usage::
 
 from __future__ import annotations
 
+import sys
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -154,7 +156,10 @@ def main() -> None:
     prevalence_by_year.round(1).to_csv(TABLES_DIR / "prevalence_by_year.csv")
 
     # ---- 7. the same five children, raw and processed --------------------------------------------------
-    raw_2024 = pd.read_parquet(INTERIM_DIR / "selected_2024.parquet")
+    interim_2024 = INTERIM_DIR / "selected_2024.parquet"
+    if not interim_2024.exists():
+        sys.exit(f"{interim_2024} not found. This figure needs the raw survey answers; run 'make download' (steps 1 and 2) first.")
+    raw_2024 = pd.read_parquet(interim_2024)
     raw_columns_to_show = [
         "hhid",
         "sc_age_years",

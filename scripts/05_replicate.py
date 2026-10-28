@@ -1,4 +1,4 @@
-"""Step 5 of 8. Do the classes come back in a different set of children?
+"""Step 5 of 14. Do the classes come back in a different set of children?
 
 Most published subtype studies cluster one sample once and stop. The classic
 failure is that the clusters describe that particular sample and vanish in
@@ -28,11 +28,11 @@ Usage::
 
 from __future__ import annotations
 
-from _common import backend_or_exit, load_analysis, log, make_parser, read_best_k, save_json
+from _common import backend_or_exit, load_analysis, log, make_parser, resolve_k, save_json
 from nsch_subtypes.data import to_flag_matrix
 from nsch_subtypes.validate import (
     ARI_PASS,
-    adjusted_rand_index,
+    ari_with_interval,
     class_probabilities,
     match_classes,
     mean_rate_difference,
@@ -46,39 +46,41 @@ HELD_OUT_YEARS = range(2022, 2025)  # model B, and the children both models labe
 def main() -> None:
     parser = make_parser("Held-out-years replication")
     parser.add_argument("--n-starts", type=int, default=20)
-    parser.add_argument("--k", type=int, default=None, help="override the K chosen in step 3")
+    parser.add_argument("--k", type=int, default=None, help="number of classes (default: the choice from step 13)")
     args = parser.parse_args()
 
     fit_lca = backend_or_exit(args.backend, "lca")["lca"]
-    k = args.k or read_best_k(args.results)
+    k = resolve_k(args)
 
-    table_a, flags = load_analysis(FIT_YEARS)
-    table_b, _ = load_analysis(HELD_OUT_YEARS)
-    flags_a = to_flag_matrix(table_a, flags)
-    flags_b = to_flag_matrix(table_b, flags)
-    log(f"model A: {flags_a.shape[0]} children (2016-21); model B: {flags_b.shape[0]} children (2022-24); K={k}")
+    table_early, flags = load_analysis(FIT_YEARS)
+    table_late, _ = load_analysis(HELD_OUT_YEARS)
+    X_early = to_flag_matrix(table_early, flags)
+    X_late = to_flag_matrix(table_late, flags)
+    log(f"model A: {X_early.shape[0]} children (2016-21); model B: {X_late.shape[0]} children (2022-24); K={k}")
 
-    model_a = fit_lca(flags_a, k, n_starts=args.n_starts, seed=args.seed)
-    model_b = fit_lca(flags_b, k, n_starts=args.n_starts, seed=args.seed)
+    model_a = fit_lca(X_early, k, n_starts=args.n_starts, seed=args.seed)
+    model_b = fit_lca(X_late, k, n_starts=args.n_starts, seed=args.seed)
 
     # Label the held-out children with model A without refitting it.
-    labels_from_a = class_probabilities(flags_b, model_a.class_sizes, model_a.condition_rates).argmax(axis=1)
+    probabilities_from_a = class_probabilities(X_late, model_a.class_sizes, model_a.condition_rates)
+    labels_from_a = probabilities_from_a.argmax(axis=1)
     # Model B's own labels, renumbered to match A's classes.
     perm = match_classes(model_a.condition_rates, model_b.condition_rates)
     labels_from_b = relabel_to_match(model_b.labels, perm)
 
-    score = adjusted_rand_index(labels_from_a, labels_from_b)
+    agreement = ari_with_interval(labels_from_a, labels_from_b, probabilities_from_a.max(axis=1), model_b.responsibilities.max(axis=1), seed=args.seed)
+    score = agreement["ari"]
     profile_gap = mean_rate_difference(model_a.condition_rates, model_b.condition_rates, perm)
 
     save_json(
         {
             "k": k,
             "backend": args.backend,
-            "ari": score,
+            **agreement,
             "pass": score >= ARI_PASS,
             "pass_line": ARI_PASS,
-            "n_fit": int(flags_a.shape[0]),
-            "n_held_out": int(flags_b.shape[0]),
+            "n_fit": int(X_early.shape[0]),
+            "n_held_out": int(X_late.shape[0]),
             "class_sizes_a": model_a.class_sizes,
             "class_sizes_b_matched": model_b.class_sizes[perm],
             "mean_abs_rate_difference_per_class": profile_gap,
@@ -89,7 +91,8 @@ def main() -> None:
         args.results / "replicate.json",
     )
     verdict = "pass" if score >= ARI_PASS else "below the pass line"
-    log(f"ARI on the 2022-24 children, model A vs model B: {score:.3f} ({verdict})")
+    log(f"ARI on the 2022-24 children, model A vs model B: {score:.3f} (95% interval {agreement['ci_low']:.3f} to {agreement['ci_high']:.3f}; {verdict})")
+    log(f"   among the {agreement['share_confident']:.0%} of children both models classify with probability >= 0.8: ARI {agreement['ari_confident']:.3f}")
     log("mean absolute difference in condition rates per matched class: " + ", ".join(f"{gap:.3f}" for gap in profile_gap))
 
 
