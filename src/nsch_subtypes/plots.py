@@ -87,8 +87,21 @@ def dendrogram_plot(merges: np.ndarray, n_clusters: int, path: Path, title: str 
     """The hierarchical clustering tree, truncated to its last 40 merges, with the cut that gives ``n_clusters`` drawn as a dashed line."""
     from scipy.cluster.hierarchy import dendrogram
 
+    # Weighted linkage sizes count children, but SciPy validates this column
+    # against the number of leaves (distinct profiles in a collapsed fit).
+    # Rebuild display counts without changing the caller's weighted tree.
+    display_merges = merges.copy()
+    n_leaves = len(merges) + 1
+    leaf_counts = np.ones(2 * n_leaves - 1)
+    for merge_index, (group_a, group_b, _distance, _weight) in enumerate(merges):
+        merged_group_id = n_leaves + merge_index
+        leaf_counts[merged_group_id] = leaf_counts[int(group_a)] + leaf_counts[int(group_b)]
+        display_merges[merge_index, 3] = leaf_counts[merged_group_id]
+
+    # Collapsed inputs represent profiles; uncollapsed inputs represent children.
+    uses_weighted_profiles = not np.allclose(display_merges[:, 3], merges[:, 3])
     fig, ax = plt.subplots(figsize=(7, 3.6))
-    dendrogram(merges, truncate_mode="lastp", p=40, no_labels=True, color_threshold=0, above_threshold_color=GRAY, ax=ax)
+    dendrogram(display_merges, truncate_mode="lastp", p=40, no_labels=True, color_threshold=0, above_threshold_color=GRAY, ax=ax)
 
     # The cut height that leaves n_clusters groups is the (n_clusters - 1)th largest merge distance.
     merge_distances = merges[:, 2]
@@ -96,7 +109,8 @@ def dendrogram_plot(merges: np.ndarray, n_clusters: int, path: Path, title: str 
     ax.axhline(cut_height, color=PURPLE, ls="--", lw=1)
 
     ax.set_ylabel("Jaccard distance at merge")
-    ax.set_xlabel("children (tree truncated to the last 40 merges)")
+    unit = "distinct condition profiles" if uses_weighted_profiles else "children"
+    ax.set_xlabel(f"{unit} (tree truncated to the last 40 merges)")
     if title:
         ax.set_title(title, fontsize=10, loc="left")
     tidy(ax)
