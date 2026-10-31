@@ -1,11 +1,8 @@
-"""Latent class analysis: the project's main clustering method, to be written from scratch.
+"""Latent class analysis: the project's main clustering method, implemented from scratch.
 
-This file holds the result type and the function signature. The algorithm
-itself is implemented by the project team as a course requirement (see
-``docs/implementation-spec.md``). Until then ``fit_lca`` raises
-``NotImplementedError``, and the scripts stop with a message asking for
-``--backend reference``, which uses the StepMix library
-(``reference.fit_lca_stepmix``).
+This file implements Bernoulli-mixture EM using NumPy only. The pipeline
+selects it with ``--backend ours``; ``--backend reference`` selects the
+StepMix wrapper. Both return LCAResult (see docs/implementation-spec.md).
 
 The model
 ---------
@@ -115,6 +112,35 @@ class LCAResult:
         return float(1.0 - total_entropy / worst_case_entropy)
 
 
+def _expectation_step(
+    flag_matrix: np.ndarray,
+    class_sizes: np.ndarray,
+    condition_rates: np.ndarray,
+) -> tuple[np.ndarray, float]:
+    """Return class probabilities for each child and the total log-likelihood.
+
+    The intermediate tables have shape (children, classes). Computing in
+    log space avoids multiplying many small condition probabilities.
+    """
+    # A present condition contributes log(theta); an absent one contributes
+    # log(1 - theta). Adding log(class size) gives the joint probability.
+    log_joint = flag_matrix @ np.log(condition_rates).T
+    log_joint += (1 - flag_matrix) @ np.log1p(-condition_rates).T
+    safe_class_sizes = np.maximum(class_sizes, np.finfo(float).tiny)
+    log_joint += np.log(safe_class_sizes)
+
+    # Subtract each row's maximum before exponentiating. This rescales the
+    # row without changing the relative probabilities of its classes.
+    row_maximum = log_joint.max(axis=1, keepdims=True)
+    relative_probabilities = np.exp(log_joint - row_maximum)
+    row_totals = relative_probabilities.sum(axis=1, keepdims=True)
+    responsibilities = relative_probabilities / row_totals
+
+    # Undo that rescaling when calculating the probability of each child.
+    log_likelihood = float((row_maximum + np.log(row_totals)).sum())
+    return responsibilities, log_likelihood
+
+
 def fit_lca(
     X: np.ndarray,
     n_classes: int,
@@ -149,11 +175,11 @@ def fit_lca(
     -------
     LCAResult
 
-    Notes for whoever implements this (full contract in docs/implementation-spec.md)
+    Implementation notes (full contract in docs/implementation-spec.md)
     ---------------------------------------------------------------------------------
-    - Work in log space and use the log-sum-exp trick in the E-step. A product
-      of 18 probabilities is a number around 1e-10 and gets smaller with each
-      class; multiplying those underflows to zero in floating point.
+    - Work in log space and use the log-sum-exp trick in the E-step.
+      Multiplying many small condition probabilities can underflow; adding
+      their logarithms and normalizing in log space avoids that problem.
     - After each M-step clip the rates to ``[1e-6, 1 - 1e-6]`` so ``log(0)``
       never happens.
     - Initialize each start with rates drawn uniformly from (0.2, 0.8) and equal class sizes.
@@ -161,4 +187,81 @@ def fit_lca(
       column means. Return a valid LCAResult anyway (the K=1 fit is the
       baseline on the BIC curve).
     """
-    raise NotImplementedError("fit_lca is implemented by the project team; see docs/implementation-spec.md")
+    # Validate once, before any random starts or numerical work.
+    flag_matrix = np.asarray(X, dtype=float)
+    if flag_matrix.ndim != 2 or min(flag_matrix.shape) == 0 or not np.isin(flag_matrix, [0, 1]).all():
+        raise ValueError("X must be a nonempty binary matrix")
+    if not isinstance(n_classes, (int, np.integer)) or n_classes < 1:
+        raise ValueError("n_classes must be a positive integer")
+    if any(not isinstance(value, (int, np.integer)) for value in (n_starts, max_iter)):
+        raise ValueError("n_starts and max_iter must be integers")
+    if n_starts < 1 or max_iter < 1 or not np.isfinite(tol) or tol < 0:
+        raise ValueError("n_starts and max_iter must be positive and tol finite and nonnegative")
+    n_children, n_conditions = flag_matrix.shape
+
+    # With one class, the best condition rates are simply the column means.
+    # Clipping also handles conditions that are always absent or present.
+    if n_classes == 1:
+        condition_rates = np.clip(flag_matrix.mean(axis=0, keepdims=True), 1e-6, 1 - 1e-6)
+        class_sizes = np.ones(1)
+        responsibilities, log_likelihood = _expectation_step(flag_matrix, class_sizes, condition_rates)
+        return LCAResult(
+            n_classes=1,
+            class_sizes=class_sizes,
+            condition_rates=condition_rates,
+            responsibilities=responsibilities,
+            log_likelihood=log_likelihood,
+            n_iter=0,
+            converged=True,
+        )
+
+    random_generator = np.random.default_rng(seed)
+    best_fit = None
+    for _start in range(n_starts):
+        # Different starting profiles explore different local optima. Using
+        # one seeded generator makes the entire sequence reproducible.
+        condition_rates = random_generator.uniform(0.2, 0.8, size=(n_classes, n_conditions))
+        class_sizes = np.full(n_classes, 1 / n_classes)
+        responsibilities, log_likelihood = _expectation_step(flag_matrix, class_sizes, condition_rates)
+        converged = False
+
+        for _iteration in range(1, max_iter + 1):
+            # M-step: count each child fractionally according to their class
+            # probabilities, then calculate the rates within each class.
+            class_membership_totals = responsibilities.sum(axis=0)
+            class_sizes = class_membership_totals / n_children
+            weighted_condition_totals = responsibilities.T @ flag_matrix
+            condition_rates = np.divide(
+                weighted_condition_totals,
+                class_membership_totals[:, None],
+                out=condition_rates.copy(),
+                where=class_membership_totals[:, None] > 0,
+            )
+            # The divide above keeps the old rates for an empty class.
+            # Clipping prevents log(0) in the next E-step.
+            condition_rates = np.clip(condition_rates, 1e-6, 1 - 1e-6)
+
+            # E-step: score the updated parameters. Do this before checking
+            # convergence so the returned probabilities and score describe
+            # the returned parameters, even at the iteration limit.
+            responsibilities, updated_log_likelihood = _expectation_step(flag_matrix, class_sizes, condition_rates)
+            improvement = updated_log_likelihood - log_likelihood
+            log_likelihood = updated_log_likelihood
+            if 0 <= improvement < tol:
+                converged = True
+                break
+
+        current_fit = LCAResult(
+            n_classes=n_classes,
+            class_sizes=class_sizes,
+            condition_rates=condition_rates,
+            responsibilities=responsibilities,
+            log_likelihood=log_likelihood,
+            n_iter=_iteration,
+            converged=converged,
+        )
+        # Compare starts by fit to the data, not by their class numbering.
+        if best_fit is None or current_fit.log_likelihood > best_fit.log_likelihood:
+            best_fit = current_fit
+
+    return best_fit
