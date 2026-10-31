@@ -1,10 +1,16 @@
 # Implementation spec for the from-scratch methods
 
-What the pipeline expects from `lca.py`, `hierarchical.py` and (if adopted) `partition.py`. The function signatures and result classes are already in those files with docstrings; the bodies raise `NotImplementedError` until replaced. The pipeline runs against library versions (`--backend reference`) in the meantime, and `tests/test_implementations.py` runs the same checks against both.
+`Note`: Implementation completed Oct. 31, 2026 
 
-If the methods themselves are new to you, `docs/background.md` section 3 explains each one in words before the math below. The module docstrings in the three files repeat the key ideas next to the code.
+The from-scratch methods live in `lca.py`, `hierarchical.py`, and `partition.py`.
+All four functions are implemented using NumPy. Their existing signatures and
+result classes are shared with the library wrappers through `backends.py`.
 
-A good order of work: get `fit_lca` passing its tests first (it is what every later step uses), then `jaccard_distances` and `cluster_hierarchical`, then `cluster_kmeans` if we decide to adopt it. Run `uv run pytest tests/test_implementations.py -v` after every change; a test that is still skipping tells you which function is still a stub.
+Use `--backend ours` to select them or `--backend reference` to select the
+library versions. Run `python -m pytest tests/test_implementations.py -v` for
+contract and comparison checks, and `python -m pytest -m slow -v` to exercise
+the full pipeline at small settings with both backends. These smoke settings
+check integration, not the final scientific results.
 
 Ground rules:
 
@@ -12,6 +18,28 @@ Ground rules:
 - Inputs are `numpy` arrays of 0/1 with no missing values; the pipeline guarantees that.
 - Determinism: the same `seed` gives the same answer. Use `numpy.random.default_rng(seed)`.
 - Don't change the signatures or the result classes. If something in them gets in the way, change the spec first.
+
+## Running the implementations on Windows
+
+From the repository root, the local virtual environment can be used directly
+when `uv` or `make` is unavailable:
+
+```powershell
+.venv/Scripts/python.exe -m pytest -q -m "not slow"
+.venv/Scripts/python.exe -m pytest -m slow -v
+.venv/Scripts/python.exe scripts/03_fit_lca.py --backend ours --results results_ours --n-starts 20 --permutation-null
+```
+
+Step 3 also accepts `--max-iter` (default 500). In the October 31 real-data
+check, K=8 reached that limit; a separate 20-start run with `max_iter=2000`
+converged after 1,364 iterations for its best start. Its fit and diagnostics
+are in `results_ours/k8_extended/`. K=1 through K=7 converged at the default.
+
+The smoke tests exercise steps 3 through 14 and figure generation with both
+backends, using reduced starts, resamples, and simulation settings. They read
+the committed analysis table; rebuilding the Census download is separate.
+They do not replace a full 200-resample analysis sweep. The weighted sensitivity
+fit in step 11 and the alternative methods in step 4 still use libraries by design.
 
 ## 1. `lca.fit_lca(X, n_classes, n_starts=20, seed=0, tol=1e-6, max_iter=500) -> LCAResult`
 
@@ -61,13 +89,13 @@ The naive version is O(n^3) with an (n, n) matrix. On this project's data the pi
 
 Checks the tests apply:
 
-- Identical labels to `reference.cluster_scipy` on synthetic data (ARI = 1), allowing for ties in distance.
-- Merge distances non-decreasing; `merges` has shape (n - 1, 4) and plots with `scipy.cluster.hierarchy.dendrogram`.
+- Identical labels to `reference.cluster_scipy` on a tie-free binary fixture (ARI = 1). On short binary profiles, equal Jaccard distances can lead to different valid trees; a separate test checks every merge against the minimum average distance between original members.
+- Merge distances non-decreasing; `merges` has shape (n - 1, 4). `plots.dendrogram_plot` converts weighted sizes to displayed leaf counts for SciPy without changing the weighted result.
 - With `weights`, the same labels as running the unweighted version on the rows repeated `weights` times.
 
 Note from the first runs on real data (October 2026): average linkage on these flags peels off outliers, so cutting to K leaves one cluster with nearly every child. The dendrogram is still a useful figure, but the pipeline also offers k-means as the cross-check (section 3). Which one the paper uses is an open decision; see `docs/validation-checklist.md`.
 
-## 3. `partition.cluster_kmeans(X, n_clusters, n_starts=20, seed=0, max_iter=300) -> PartitionResult` (if adopted)
+## 3. `partition.cluster_kmeans(X, n_clusters, n_starts=20, seed=0, max_iter=300) -> PartitionResult`
 
 Lloyd's algorithm on the 0/1 matrix treated as real vectors.
 
@@ -87,4 +115,4 @@ Checks: inertia never increases across iterations; on the synthetic data, ARI ag
 
 `validate.class_probabilities(X, class_sizes, condition_rates)` is a small helper that scores new children under a fixed model (the E-step formula with no update). It exists so the held-out checks can label children with a model fit elsewhere; `fit_lca` should have its own E-step.
 
-Run the implementation tests with `uv run pytest tests/test_implementations.py -v`. They skip with a clear message while a function still raises `NotImplementedError`.
+Run the implementation tests with `uv run pytest tests/test_implementations.py -v`. Missing implementations fail the tests.
