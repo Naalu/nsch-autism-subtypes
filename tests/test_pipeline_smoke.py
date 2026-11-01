@@ -90,7 +90,22 @@ def test_every_script_runs_at_tiny_settings(tmp_path: Path, backend: str) -> Non
     assert (main_results / "model_choice.json").exists() and (main_results / "heldout_selection.csv").exists()
 
     # Step 14: shape and stability by simulation, at the smallest settings that exercise every branch.
-    run("14_shape_and_stability.py", "--results", main_results, *small_fit_arguments, "--k", str(K), "--replicates", "1", "--k-max", "3", "--control-k", "3", "--n-boot", "2")
+    run(
+        "14_shape_and_stability.py",
+        "--results",
+        main_results,
+        *small_fit_arguments,
+        "--k",
+        str(K),
+        "--replicates",
+        "1",
+        "--k-max",
+        "3",
+        "--control-k",
+        "3",
+        "--n-boot",
+        "2",
+    )
     assert (
         (main_results / "latent_density.csv").exists()
         and (main_results / "stability_calibration.csv").exists()
