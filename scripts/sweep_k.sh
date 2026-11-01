@@ -92,12 +92,14 @@ done
 if [ -f "$MAIN/heldout_selection.csv" ]; then REUSE=(--reuse-heldout); else REUSE=(); fi
 step "step 13, held-out likelihood and the K rule" $PY scripts/13_heldout_selection.py --results "$MAIN" --backend "$BACKEND" "${REUSE[@]}"
 step "step 14, shape of the latent space and stability under known truth" $PY scripts/14_shape_and_stability.py --results "$MAIN" --backend "$BACKEND"
-if [ "$BACKEND" = "ours" ]; then REPORTS=(--reports "$MAIN/reports"); else REPORTS=(); fi
-step "results figures" $PY scripts/make_results_figures.py --results "$MAIN" "${REPORTS[@]}"
+# Figure generation routes results_ours inputs to reports/figures/results_ours/
+# and reports/tables/results_ours/, preserving the reference presentation files.
+step "results figures" $PY scripts/make_results_figures.py --results "$MAIN"
 
 # 3. Summary.
 echo "=== summary" | tee -a "$LOG"
-cat reports/tables/checks_by_k.csv 2>/dev/null | tee -a "$LOG"
+if [ "$BACKEND" = "ours" ]; then SUMMARY_TABLE="reports/tables/results_ours/checks_by_k.csv"; else SUMMARY_TABLE="reports/tables/checks_by_k.csv"; fi
+cat "$SUMMARY_TABLE" 2>/dev/null | tee -a "$LOG"
 for K in "${KS[@]}"; do echo "$PREFIX$K: $(cat "$PREFIX$K/STATUS" 2>/dev/null)" | tee -a "$LOG"; done
 if [ "$BACKEND" = "ours" ]; then
     PREFIX="$PREFIX" KS="${KS[*]}" $PY - <<'EOF' | tee -a "$LOG"
