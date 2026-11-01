@@ -6,11 +6,13 @@
 
 PY      ?= uv run python
 BACKEND ?= reference
+# Use the same backend-specific result folders as sweep_k.sh.
+FIT_RESULTS = $(if $(filter ours,$(BACKEND)),results_ours,results)
 STARTS  ?= 20
 NBOOT   ?= 200
 KS      ?= 4 5 6 7
 
-.PHONY: help all download fit sweep choose calibrate figures overview test smoke lint clean
+.PHONY: help all download fit sweep choose calibrate figures compare overview test smoke lint clean
 
 help:
 	@echo "make test       unit tests on synthetic data (seconds)"
@@ -20,6 +22,7 @@ help:
 	@echo "make choose     step 13 only: apply the K rule to the bootstraps on file"
 	@echo "make calibrate  step 14 only: shape and stability checks by simulation (about an hour)"
 	@echo "make figures    redraw the results figures from existing outputs"
+	@echo "make compare    compare saved reference and from-scratch fits, with tables, data, and diagrams"
 	@echo "make overview   the data-overview figures (needs data/interim from 'make download')"
 	@echo "make download   steps 1 and 2 from the Census files (about 60 MB; not needed for anything else)"
 	@echo "make all        fit + sweep"
@@ -34,19 +37,22 @@ download:
 	$(PY) scripts/02_encode.py
 
 fit:
-	$(PY) scripts/03_fit_lca.py --backend $(BACKEND) --n-starts $(STARTS) --permutation-null
+	$(PY) scripts/03_fit_lca.py --backend $(BACKEND) --results $(FIT_RESULTS) --n-starts $(STARTS) --permutation-null
 
 sweep:
 	BACKEND=$(BACKEND) STARTS=$(STARTS) NBOOT=$(NBOOT) bash scripts/sweep_k.sh $(KS)
 
 choose:
-	$(PY) scripts/13_heldout_selection.py --backend $(BACKEND) --reuse-heldout
+	$(PY) scripts/13_heldout_selection.py --backend $(BACKEND) --results $(FIT_RESULTS) --reuse-heldout
 
 calibrate:
-	$(PY) scripts/14_shape_and_stability.py --backend $(BACKEND)
+	$(PY) scripts/14_shape_and_stability.py --backend $(BACKEND) --results $(FIT_RESULTS)
 
 figures:
-	$(PY) scripts/make_results_figures.py
+	$(PY) scripts/make_results_figures.py --results $(FIT_RESULTS)
+
+compare:
+	$(PY) scripts/compare_backends.py
 
 overview:
 	$(PY) scripts/make_data_overview.py
