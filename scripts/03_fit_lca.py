@@ -117,6 +117,7 @@ def main() -> None:
             "bic_argmin_k": ks[int(np.argmin(bics))],
             "backend": args.backend,
             "n_starts": args.n_starts,
+            "seed": args.seed,
             # Record the iteration budget alongside the number of starts.
             "max_iter": args.max_iter,
             "n_children": n_children,
