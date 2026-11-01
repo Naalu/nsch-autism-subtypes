@@ -25,6 +25,7 @@ Course project for CS 472/572 (Unsupervised Learning) at Northern Arizona Univer
 3. The numbered scripts in `scripts/`, in order. Each begins with a summary of what it does and why.
 4. `docs/validation-checklist.md`: what every check found, the decisions made after seeing results, and how the design compares with published subtyping studies.
 5. `docs/outputs.md`: every file the pipeline writes, and how to add a condition or a check.
+6. `reports/implementation-comparison.md`: manually maintained comparison notes; `scripts/compare_backends.py` supplies the tables, data, and diagrams.
 
 ## What's here
 
@@ -45,6 +46,8 @@ scripts/01_select.py ... 14_shape_and_stability.py  one pipeline step each; swee
 data/processed/              the analysis table (committed), codebook, selection counts
 reports/data-overview.md     the data in raw and processed form, with figures
 reports/figures/results/     the results figures (classes, severity, loadings, checks by K, BIC curves)
+reports/figures/results_ours/ from-scratch and implementation-comparison figures
+reports/implementation-comparison.md  manually maintained comparison notes
 paper/                       outline and draft sections
 docs/background.md           start here if the data or the methods are new to you
 docs/implementation-spec.md  what the from-scratch code has to do, and the tests it has to pass
