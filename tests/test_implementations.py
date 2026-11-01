@@ -16,8 +16,8 @@ from nsch_subtypes.backends import get_backend
 from nsch_subtypes.synthetic import make_synthetic
 from nsch_subtypes.validate import adjusted_rand_index, match_classes, relabel_to_match
 
-
 BACKENDS = ["reference", "ours"]
+
 
 def test_scratch_jaccard_handles_zero_rows_and_binary_dtypes():
     from nsch_subtypes.hierarchical import jaccard_distances
@@ -68,7 +68,7 @@ def test_scratch_kmeans_inertia_matches_returned_labels_and_centers():
 # ---------------------------------------------------------------------------- #
 
 ##### commented out now that the other bits have been implemented so that it will count
-   ##### as a failure if it actually fails
+##### as a failure if it actually fails
 # def call_or_skip(function, *args, **kwargs):
 #     """Call the function; if it is still a stub, skip the test instead of failing it."""
 #     try:
