@@ -11,7 +11,7 @@ comparing profiles; their original numbers are arbitrary.
 - Settings: reference: 20 starts, seed 0, max 2000 iterations, ours: 20 starts, seed 0, max 2000 iterations.
 - All compared fits converged.
 
-The saved fits are in `results/` (reference) and `results_ours/` (ours). [The summary
+The saved fits were in `results/` (reference) and `results_ours/` (ours) when this comparison was run. Since November our code writes to `results/` and StepMix to `results_reference/`, and `scripts/compare_backends.py` reads those by default. [The summary
 table](tables/backend_comparison.csv) contains every shared K; [the condition-rate
 table](tables/backend_condition_rates.csv) contains the matched chart values.
 `results_ours/backend_comparison.json` records input locations and settings. The comparison script
@@ -30,21 +30,21 @@ not establish that the latent classes are real subtypes or choose K.
 
 ### Model fit
 
-![BIC from both implementations and their difference](figures/results_ours/backend_bic.png)
+![BIC from both implementations and their difference](figures/backend_comparison/backend_bic.png)
 
 The left panel overlays BIC from both implementations. The right panel shows the small differences that
 the main BIC scale can hide. A negative difference means lower BIC for ours.
 
 ### Matched profiles
 
-![Reference and from-scratch profiles](figures/results_ours/backend_profiles.png)
+![Reference and from-scratch profiles](figures/backend_comparison/backend_profiles.png)
 
 Both panels use the same probability scale and reference class order. Values are fitted condition
 probabilities, rather than raw within-class percentages.
 
 ### Condition-rate differences
 
-![Signed differences between matched condition rates](figures/results_ours/backend_rate_differences.png)
+![Signed differences between matched condition rates](figures/backend_comparison/backend_rate_differences.png)
 
 Positive values mean a higher rate in ours; negative values mean a higher rate in the reference. The
 units are percentage points, and the color scale is centered at zero.
@@ -69,11 +69,11 @@ used three starts. The bootstrap used just three resamples and two starts
 per refit. These settings check that the program runs; they do not provide
 final research estimates of class stability.
 
-![Weighted hierarchical tree, verification run at K=3](figures/results_ours/verification_k3_dendrogram.png)
+![Weighted hierarchical tree, verification run at K=3](figures/backend_comparison/verification_k3_dendrogram.png)
 
-![Bootstrap Jaccard, three verification resamples only](figures/results_ours/verification_k3_stability.png)
+![Bootstrap Jaccard, three verification resamples only](figures/backend_comparison/verification_k3_stability.png)
 
-[The verification stability table](tables/results_ours/verification_k3_stability.csv)
+[The verification stability table](tables/backend_comparison/verification_k3_stability.csv)
 contains the plotted values. The original check record and raw artifacts are
 archived under `results_ours/verification/`. All `verification_k3_` figures and
 tables come from that earlier run, separate from the 20-start comparison.

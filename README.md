@@ -46,7 +46,7 @@ scripts/01_select.py ... 14_shape_and_stability.py  one pipeline step each; swee
 data/processed/              the analysis table (committed), codebook, selection counts
 reports/data-overview.md     the data in raw and processed form, with figures
 reports/figures/results/     the results figures (classes, severity, loadings, checks by K, BIC curves)
-reports/figures/results_ours/ from-scratch and implementation-comparison figures
+reports/figures/backend_comparison/  our code against StepMix, side by side
 reports/implementation-comparison.md  manually maintained comparison notes
 paper/                       outline and draft sections
 docs/background.md           start here if the data or the methods are new to you
@@ -72,7 +72,7 @@ make sweep                     # steps 4 to 14 at K = 4 to 7, then the figures (
 make download                  # optional: rebuild the analysis table from the Census files (about 60 MB)
 ```
 
-`data/processed/analysis.parquet` is committed, so nothing needs the download. `make` uses the StepMix / SciPy / scikit-learn versions by default; add `BACKEND=ours` for the NumPy from-scratch implementations. Every script takes `--help`. Outputs go to `results/` and `results_k{K}/`; `docs/outputs.md` lists them.
+`data/processed/analysis.parquet` is committed, so nothing needs the download. `make` uses our from-scratch NumPy code by default; add `BACKEND=reference` to run the StepMix / SciPy / scikit-learn versions instead, which write to `results_reference/` so they never overwrite the main run. Every script takes `--help`. Outputs go to `results/` and `results_k{K}/`; `docs/outputs.md` lists them.
 
 The survey can also be read through the [nsch](https://github.com/NAU-ASD3/nsch-py) package: `uv sync --extra nsch`, then `scripts/01_select.py --loader nsch`. That path is experimental until nsch publishes a release.
 
@@ -110,10 +110,10 @@ Two things to know up front. The flags are parent reports of a doctor's diagnosi
 ## Status
 
 Implementation update, October 31, 2026: the NumPy LCA, hierarchical, and
-k-means implementations are available through `--backend ours`. The findings
-below describe the October 20 reference analysis; new implementation checks
-are kept separately in `results_ours/`. See `docs/implementation-spec.md` for
-verification commands.
+k-means implementations are in, and `make` now uses them by default. The
+findings below come from the October 20 run with the reference backend and
+are being regenerated with our code; `reports/implementation-comparison.md`
+shows how closely the two agree.
 
 October 20, 2026. All steps run end to end on the real files with the reference backend. The from-scratch implementations are being written against `docs/implementation-spec.md`, and every number below will be re-verified with them.
 
