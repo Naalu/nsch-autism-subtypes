@@ -4,8 +4,8 @@ Writes summary tables, machine-readable comparison data, and three charts::
 
     python scripts/compare_backends.py --k 4
 
-Inputs default to results/ (reference) and results_ours/ (from scratch).
-Figures go to reports/figures/results_ours/; reference figures stay separate.
+Inputs default to results/ (from scratch, the main run) and results_reference/
+(StepMix). Figures go to reports/figures/backend_comparison/.
 """
 
 from __future__ import annotations
@@ -145,8 +145,8 @@ def draw_comparison_figures(summary: pd.DataFrame, profiles: pd.DataFrame, k: in
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--reference", type=Path, default=REPO / "results", help="saved StepMix fits")
-    parser.add_argument("--ours", type=Path, default=REPO / "results_ours", help="saved NumPy fits")
+    parser.add_argument("--reference", type=Path, default=REPO / "results_reference", help="saved StepMix fits")
+    parser.add_argument("--ours", type=Path, default=REPO / "results", help="saved NumPy fits")
     parser.add_argument("--reports", type=Path, default=REPO / "reports", help="output root for tables and figures")
     parser.add_argument("--k", type=int, default=4, help="K to show in the profile comparison")
     args = parser.parse_args()
@@ -171,7 +171,7 @@ def main() -> None:
     tables_dir.mkdir(parents=True, exist_ok=True)
     summary.to_csv(tables_dir / "backend_comparison.csv", index=False)
     profiles.to_csv(tables_dir / "backend_condition_rates.csv", index=False)
-    draw_comparison_figures(summary, profiles, args.k, args.reports / "figures" / "results_ours")
+    draw_comparison_figures(summary, profiles, args.k, args.reports / "figures" / "backend_comparison")
     # Save the numbers and settings needed to write a report. Narrative text
     # stays manually maintained; this command never creates or replaces it.
     save_json(
@@ -185,7 +185,7 @@ def main() -> None:
         args.ours / "backend_comparison.json",
     )
     log(f"Wrote comparison tables to {tables_dir}")
-    log(f"Wrote comparison figures to {args.reports / 'figures' / 'results_ours'}")
+    log(f"Wrote comparison figures to {args.reports / 'figures' / 'backend_comparison'}")
     log(f"Wrote comparison data to {args.ours / 'backend_comparison.json'}")
     log(summary.to_string(index=False))
 

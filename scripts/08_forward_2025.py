@@ -20,7 +20,7 @@ Outputs, under ``results/``::
 
 Usage::
 
-    python scripts/08_forward_2025.py --backend reference
+    python scripts/08_forward_2025.py
 """
 
 from __future__ import annotations

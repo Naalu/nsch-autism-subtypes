@@ -32,7 +32,7 @@ Outputs, under ``--results``::
 
 Usage::
 
-    python scripts/03_fit_lca.py --backend reference --k-max 8 --permutation-null
+    python scripts/03_fit_lca.py --k-max 8 --permutation-null
 """
 
 from __future__ import annotations

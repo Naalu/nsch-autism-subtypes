@@ -55,7 +55,7 @@ Outputs, under ``--results``::
 
 Usage::
 
-    python scripts/14_shape_and_stability.py --backend reference
+    python scripts/14_shape_and_stability.py
 """
 
 from __future__ import annotations

@@ -56,7 +56,7 @@ Outputs, under ``--results``::
 
 Usage::
 
-    python scripts/04_crosscheck.py --backend reference --method kmeans --k 4
+    python scripts/04_crosscheck.py --method kmeans --k 4
 """
 
 from __future__ import annotations

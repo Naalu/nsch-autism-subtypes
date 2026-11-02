@@ -59,7 +59,7 @@ Outputs, under ``--results``::
 
 Usage::
 
-    python scripts/13_heldout_selection.py --backend reference
+    python scripts/13_heldout_selection.py
 """
 
 from __future__ import annotations

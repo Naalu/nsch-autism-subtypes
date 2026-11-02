@@ -23,7 +23,7 @@ Output: ``results/replicate.json``.
 
 Usage::
 
-    python scripts/05_replicate.py --backend reference
+    python scripts/05_replicate.py
 """
 
 from __future__ import annotations

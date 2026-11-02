@@ -28,7 +28,7 @@ Usage::
 
     python scripts/make_results_figures.py            # the K chosen in step 13
     python scripts/make_results_figures.py --k 5      # a sensitivity analysis
-    python scripts/make_results_figures.py --results results_ours
+    python scripts/make_results_figures.py --results results_reference
 """
 
 from __future__ import annotations
@@ -272,13 +272,13 @@ def draw_agreement_by_confidence(kdir: Path, path: Path) -> None:
 
 
 def report_output_directories(main_results: Path, reports_root: Path) -> tuple[Path, Path]:
-    """Keep from-scratch presentation outputs separate from reference outputs.
+    """Keep the reference (library) outputs separate from the main, from-scratch ones.
 
-    This follows the same results_ours naming convention as sweep_k.sh.
+    This follows the same results_reference naming convention as sweep_k.sh.
     A custom --reports parent still works, including the smoke-test folders.
     """
-    if main_results.name.startswith("results_ours"):
-        return reports_root / "figures" / "results_ours", reports_root / "tables" / "results_ours"
+    if main_results.name.startswith("results_reference"):
+        return reports_root / "figures" / "results_reference", reports_root / "tables" / "results_reference"
     return reports_root / "figures" / "results", reports_root / "tables"
 
 
@@ -286,7 +286,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Results figures")
     parser.add_argument("--k", type=int, default=None, help="the K to draw (default: the choice from step 13)")
     parser.add_argument("--results", type=Path, default=RESULTS_DIR, help="main results folder; the per-K folders are found beside it")
-    parser.add_argument("--reports", type=Path, default=REPO / "reports", help="report root; results_ours inputs use separate figure and table subfolders")
+    parser.add_argument("--reports", type=Path, default=REPO / "reports", help="report root; results_reference inputs use separate figure and table subfolders")
     args = parser.parse_args()
     main_dir = args.results
     out_dir, tables_dir = report_output_directories(main_dir, args.reports)

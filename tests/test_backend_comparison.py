@@ -65,12 +65,12 @@ def test_comparison_rejects_different_children_or_condition_order(saved_pair, fi
         compare_fit_pair(reference_dir, ours_dir, 2)
 
 
-def test_from_scratch_reports_preserve_reference_destinations(tmp_path):
+def test_reference_reports_do_not_overwrite_the_main_destinations(tmp_path):
     reports = tmp_path / "reports"
     assert report_output_directories(Path("results"), reports) == (reports / "figures" / "results", reports / "tables")
-    assert report_output_directories(Path("results_ours"), reports) == (
-        reports / "figures" / "results_ours",
-        reports / "tables" / "results_ours",
+    assert report_output_directories(Path("results_reference"), reports) == (
+        reports / "figures" / "results_reference",
+        reports / "tables" / "results_reference",
     )
 
 
@@ -97,7 +97,7 @@ def test_comparison_outputs_data_and_charts_without_writing_a_report(saved_pair,
     assert (reports / "tables" / "backend_comparison.csv").exists()
     assert (reports / "tables" / "backend_condition_rates.csv").exists()
     for name in ("backend_bic.png", "backend_profiles.png", "backend_rate_differences.png"):
-        assert (reports / "figures" / "results_ours" / name).exists()
+        assert (reports / "figures" / "backend_comparison" / name).exists()
     comparison = json.loads((ours_dir / "backend_comparison.json").read_text())
     assert comparison["profile_k"] == 2
     assert comparison["comparisons"][0]["ari"] == 1

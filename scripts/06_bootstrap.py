@@ -24,7 +24,7 @@ Outputs, under ``results/``::
 
 Usage::
 
-    python scripts/06_bootstrap.py --backend reference --n-boot 200
+    python scripts/06_bootstrap.py --n-boot 200
 """
 
 from __future__ import annotations

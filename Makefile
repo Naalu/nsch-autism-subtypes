@@ -1,13 +1,13 @@
 # Pipeline entry points. Run `make help` for a list.
 #
-# BACKEND=reference uses StepMix / SciPy / scikit-learn and works today.
-# BACKEND=ours uses the from-scratch code in src/nsch_subtypes/ once it is
-# implemented (see docs/implementation-spec.md); until then it stops at step 3.
+# BACKEND=ours (the default) uses the from-scratch NumPy code in src/nsch_subtypes/
+# and writes to results/. BACKEND=reference uses StepMix / SciPy / scikit-learn
+# and writes to results_reference/, as the check on our code.
 
 PY      ?= uv run python
-BACKEND ?= reference
+BACKEND ?= ours
 # Use the same backend-specific result folders as sweep_k.sh.
-FIT_RESULTS = $(if $(filter ours,$(BACKEND)),results_ours,results)
+FIT_RESULTS = $(if $(filter reference,$(BACKEND)),results_reference,results)
 STARTS  ?= 20
 NBOOT   ?= 200
 KS      ?= 4 5 6 7
@@ -67,4 +67,4 @@ lint:
 	uv run ruff check . && uv run ruff format --check .
 
 clean:
-	rm -rf results/*.json results/*.csv results/*.npz results/*.npy results/*.log results/figures results_k*/ results_ours*/
+	rm -rf results/*.json results/*.csv results/*.npz results/*.npy results/*.log results/figures results_k*/ results_reference*/
