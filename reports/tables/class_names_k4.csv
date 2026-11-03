@@ -1,5 +1,5 @@
 class,dev_marker_rate,psych_marker_rate,name,n_children_modal,weighted_share
-0,0.71,0.767,developmental and psychiatric,1535,0.157
-1,0.759,0.305,developmental-language,2590,0.328
-2,0.158,0.236,fewer co-occurring conditions,2853,0.34
-3,0.139,0.681,psychiatric,1913,0.176
+0,0.757,0.305,developmental-language,2614,0.329
+1,0.156,0.236,fewer co-occurring conditions,2827,0.338
+2,0.141,0.681,psychiatric,1923,0.177
+3,0.712,0.766,developmental and psychiatric,1527,0.156
