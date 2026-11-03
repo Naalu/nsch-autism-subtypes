@@ -95,6 +95,7 @@ Fit on 2016-21 (model A), refit on 2022-24 (model B), compare on the 2022-24 chi
 
 | File | Contents |
 |---|---|
+| `shares_by_year.csv` | The same, one survey year at a time under the pooled model (`year`, `n`, then the `shares.csv` columns), to show whether the mix of classes drifts across the decade. |
 | `shares.csv` | Weighted share of US autistic children aged 6-17 in each class: `share`, `se`, `ci_low`, `ci_high`, `n_modal` (children assigned), `weighted_count`. |
 | `severity_by_class.csv` | Weighted share rated mild, moderate and severe in each class, each with a standard error. |
 | `demographics.csv` | Weighted mean age and share female by class. |

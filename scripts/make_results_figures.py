@@ -16,6 +16,7 @@ the parent folder)::
     severity_by_class.png        weighted severity distribution per class
     loadings.png                 slopes in the two-dimensional latent trait model
     shares_pooled_vs_2025.png    class shares, 2016-24 average and 2025
+    shares_by_year.png           class shares in each survey year under the pooled model
     checks_by_k.png              every agreement and stability check against K, with intervals
     model_fit.png                in-sample BIC and held-out likelihood against number of parameters
     map.png                      children in the two-dimensional space, with condition directions and classes
@@ -420,6 +421,26 @@ def main() -> None:
         tidy(ax)
         fig.tight_layout()
         fig.savefig(out_dir / "shares_pooled_vs_2025.png", dpi=170)
+        plt.close(fig)
+
+    # ---- 4b. shares by survey year ------------------------------------------------------------------
+    by_year_path = kdir / "shares_by_year.csv"
+    if by_year_path.exists():
+        by_year = pd.read_csv(by_year_path)
+        fig, ax = plt.subplots(figsize=(6.8, 3.4))
+        for rank, c in enumerate(order):
+            d = by_year[by_year["class"] == c].sort_values("year")
+            color = CLASS_COLORS[rank % len(CLASS_COLORS)]
+            ax.plot(d["year"], d["share"], "o-", color=color, lw=1.6, ms=4, label=label_of[c])
+            ax.fill_between(d["year"], d["ci_low"], d["ci_high"], color=color, alpha=0.12, lw=0)
+        ax.set_xticks(sorted(by_year["year"].unique()))
+        ax.set_ylim(0, max(0.5, float(by_year["ci_high"].max()) + 0.02))
+        ax.set_ylabel("weighted share, with 95% CI")
+        ax.legend(frameon=False, fontsize=7.5, ncol=4, loc="upper center", bbox_to_anchor=(0.5, -0.12))
+        ax.set_title(f"Class shares by survey year under the pooled K={k} model", fontsize=9, loc="left")
+        tidy(ax)
+        fig.tight_layout()
+        fig.savefig(out_dir / "shares_by_year.png", dpi=170)
         plt.close(fig)
 
     # ---- 5. checks by K -------------------------------------------------------------------------------
