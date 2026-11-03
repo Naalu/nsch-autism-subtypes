@@ -8,18 +8,20 @@
 # no download is needed.
 #
 # For each K listed this creates results_k{K}/ holding a copy of that K's
-# step 3 fit and runs steps 4 to 12 against it (the 200-resample bootstrap,
-# step 6, last because it is slow: roughly 20 to 40 minutes per K). Then
-# step 13 applies the K rule across every folder that has a bootstrap,
-# step 14 calibrates the shape and stability checks by simulation (about an
-# hour), and the results figures are drawn for the chosen K.
+# step 3 fit and runs steps 4 to 12 against it, then the 200-resample
+# bootstrap (step 6, roughly 20 to 40 minutes per K) and step 15, which
+# reruns the replication checks on data simulated from a continuum and from
+# the class model (10 to 15 minutes). Then step 13 applies the K rule across
+# every folder that has a bootstrap, step 14 calibrates the shape and
+# stability checks by simulation (about an hour), and the results figures
+# are drawn for the chosen K.
 #
 # The default backend is our from-scratch code. With BACKEND=reference the
 # folders are results_reference/ and results_reference_k{K}/ instead. When
 # both backends have been run, the summary prints how closely the two agree.
 #
 # Usage, from the repository root:
-#     bash scripts/sweep_k.sh                # K = 4 5 6 7, our code
+#     bash scripts/sweep_k.sh                # K = 4 5 6 7 8, our code
 #     bash scripts/sweep_k.sh 4 5            # your own list
 #     BACKEND=reference bash scripts/sweep_k.sh 4 5
 #
@@ -30,7 +32,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 KS=("$@")
-if [ ${#KS[@]} -eq 0 ]; then KS=(4 5 6 7); fi
+if [ ${#KS[@]} -eq 0 ]; then KS=(4 5 6 7 8); fi
 BACKEND="${BACKEND:-ours}"
 STARTS="${STARTS:-20}"
 NBOOT="${NBOOT:-200}"
@@ -85,6 +87,7 @@ for K in "${KS[@]}"; do
     step "K=$K robustness"                 $PY scripts/11_robustness.py "${common[@]}" --n-starts "$STARTS"
     step "K=$K classes vs dimensions"      $PY scripts/12_dimensions.py "${common[@]}" --fits "$MAIN"
     step "K=$K bootstrap ($NBOOT)"         $PY scripts/06_bootstrap.py "${common[@]}" --n-boot "$NBOOT" --n-starts "$STARTS"
+    step "K=$K replication checks on simulated data" $PY scripts/15_replication_calibration.py "${common[@]}" --n-starts "$STARTS"
     if [ ${#FAILED[@]} -eq 0 ]; then echo "complete" > "$DIR/STATUS"; else printf "failed: %s\n" "${FAILED[@]}" > "$DIR/STATUS"; fi
 done
 

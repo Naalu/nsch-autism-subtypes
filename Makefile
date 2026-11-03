@@ -11,6 +11,7 @@ FIT_RESULTS = $(if $(filter reference,$(BACKEND)),results_reference,results)
 STARTS  ?= 20
 NBOOT   ?= 200
 KS      ?= 4 5 6 7 8
+K       ?= 4
 
 .PHONY: help all download fit sweep choose calibrate figures compare overview test smoke lint clean
 
@@ -18,15 +19,15 @@ help:
 	@echo "make test       unit tests on synthetic data (seconds)"
 	@echo "make smoke      run every pipeline step once at tiny settings (about 5 minutes)"
 	@echo "make fit        step 3: latent class models K=1..8 into results/"
-	@echo "make sweep      steps 4 to 14 at K in KS ($(KS)) and the figures (hours; mostly bootstrap)"
+	@echo "make sweep      steps 4 to 15 at K in KS ($(KS)) and the figures (hours; mostly bootstrap)"
 	@echo "make choose     step 13 only: apply the K rule to the bootstraps on file"
-	@echo "make calibrate  step 14 only: shape and stability checks by simulation (about an hour)"
+	@echo "make calibrate  steps 14 and 15 only: shape, stability and replication checks on simulated data (about an hour; step 15 at K=$(K))"
 	@echo "make figures    redraw the results figures from existing outputs"
 	@echo "make compare    compare saved reference and from-scratch fits, with tables, data, and diagrams"
 	@echo "make overview   the data-overview figures (needs data/interim from 'make download')"
 	@echo "make download   steps 1 and 2 from the Census files (about 60 MB; not needed for anything else)"
 	@echo "make all        fit + sweep"
-	@echo "Options: BACKEND=$(BACKEND) STARTS=$(STARTS) NBOOT=$(NBOOT) KS='$(KS)'"
+	@echo "Options: BACKEND=$(BACKEND) STARTS=$(STARTS) NBOOT=$(NBOOT) KS='$(KS)' K=$(K)"
 
 all: fit sweep
 
@@ -47,6 +48,7 @@ choose:
 
 calibrate:
 	$(PY) scripts/14_shape_and_stability.py --backend $(BACKEND) --results $(FIT_RESULTS)
+	$(PY) scripts/15_replication_calibration.py --backend $(BACKEND) --results $(FIT_RESULTS)_k$(K) --k $(K)
 
 figures:
 	$(PY) scripts/make_results_figures.py --results $(FIT_RESULTS)

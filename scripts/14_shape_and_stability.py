@@ -66,14 +66,8 @@ import pandas as pd
 from _common import MAIN_YEARS, backend_or_exit, load_analysis, load_lca_fit, log, make_parser, resolve_k, save_json
 from nsch_subtypes.data import to_flag_matrix
 from nsch_subtypes.latent_trait import draw_positions, fit_latent_density, fit_latent_trait, simulate_latent_trait
+from nsch_subtypes.lca import simulate_classes
 from nsch_subtypes.validate import JACCARD_STABLE, bootstrap_stability
-
-
-def simulate_classes(class_sizes: np.ndarray, condition_rates: np.ndarray, n: int, seed: int) -> np.ndarray:
-    """Fake children from a latent class model: draw a class, then each condition independently at that class's rate."""
-    rng = np.random.default_rng(seed)
-    labels = rng.choice(len(class_sizes), size=n, p=class_sizes / class_sizes.sum())
-    return (rng.random((n, condition_rates.shape[1])) < condition_rates[labels]).astype(np.uint8)
 
 
 def density_row(name: str, replicate: int, X: np.ndarray, trait, seed: int) -> tuple[dict, np.ndarray]:

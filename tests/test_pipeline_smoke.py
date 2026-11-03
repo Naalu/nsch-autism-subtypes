@@ -71,6 +71,7 @@ def test_every_script_runs_at_tiny_settings(tmp_path: Path, backend: str) -> Non
     run("11_robustness.py", *selected_k_arguments, *small_fit_arguments, "--seeds", "1,2")
     # --sim-k-max below K on purpose: step 12 must still fit up to K (this crashed at K=7 and 8).
     run("12_dimensions.py", *selected_k_arguments, *small_fit_arguments, "--fits", main_results, "--d-max", "2", "--sim-replicates", "1", "--sim-k-max", "2")
+    run("15_replication_calibration.py", *selected_k_arguments, *small_fit_arguments, "--replicates", "1", "--kmeans-starts", "2", "--kmeans-seeds", "1")
 
     for name in (
         "crosscheck_kmeans.json",
@@ -83,6 +84,7 @@ def test_every_script_runs_at_tiny_settings(tmp_path: Path, backend: str) -> Non
         "parallel_ever.json",
         "robustness.json",
         "model_comparison.csv",
+        "replication_calibration.csv",
     ):
         assert (results_for_k / name).exists(), f"{name} was not written"
 

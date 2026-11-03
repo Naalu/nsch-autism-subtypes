@@ -150,6 +150,18 @@ def _expectation_step(
 MAX_ITER = 2000
 
 
+def simulate_classes(class_sizes: np.ndarray, condition_rates: np.ndarray, n: int, seed: int = 0) -> np.ndarray:
+    """Draw ``n`` fake children from a latent class model: pick a class, then each condition independently at that class's rate.
+
+    Used by steps 12, 14 and 15 to make data with exactly K classes in it, as
+    the control for the continuum simulations.
+    """
+    rng = np.random.default_rng(seed)
+    class_sizes = np.asarray(class_sizes, dtype=float)
+    labels = rng.choice(len(class_sizes), size=n, p=class_sizes / class_sizes.sum())
+    return (rng.random((n, condition_rates.shape[1])) < condition_rates[labels]).astype(np.uint8)
+
+
 def fit_lca(
     X: np.ndarray,
     n_classes: int,

@@ -21,6 +21,7 @@ the parent folder)::
     map.png                      children in the two-dimensional space, with condition directions and classes
     latent_density.png           estimated distribution of positions: real data against simulated continuum and classes
     stability_vs_simulation.png  least stable class at each K, real data against simulated continuum and classes
+    replication_vs_simulation.png each replication check's real ARI against its range on simulated continuum and class data
     agreement_by_confidence.png  each check's ARI as children near a class boundary are set aside
     tables/class_names_k{K}.csv, tables/checks_by_k.csv, tables/method_comparison.csv
 
@@ -219,6 +220,41 @@ def draw_stability_vs_simulation(real_csv: Path, simulated_csv: Path, path: Path
     ax.set_ylim(0, 1.02)
     ax.legend(frameon=False, fontsize=7.5, loc="lower left")
     ax.set_title("Class stability at each K, real and simulated data", fontsize=9, loc="left")
+    tidy(ax)
+    fig.tight_layout()
+    fig.savefig(path, dpi=170)
+    plt.close(fig)
+
+
+def draw_replication_vs_simulation(calibration_csv: Path, path: Path) -> None:
+    """Each replication check's real ARI against the range the same check produces on simulated continuum and class data."""
+    table = pd.read_csv(calibration_csv)
+    checks = [c for c in table["check"].unique()]
+    simulated = table[table["data"] != "real"]
+    real = table[table["data"] == "real"].set_index("check")["ari"]
+    kinds = list(simulated["data"].unique())
+    colors = {kinds[0]: CYAN} if kinds else {}
+    if len(kinds) > 1:
+        colors[kinds[1]] = PURPLE
+    fig, ax = plt.subplots(figsize=(6.8, 3.6))
+    y = np.arange(len(checks))
+    offsets = np.linspace(-0.18, 0.18, max(len(kinds), 1))
+    for kind, offset in zip(kinds, offsets, strict=False):
+        group = simulated[simulated["data"] == kind]
+        lo = group.groupby("check")["ari"].min().reindex(checks)
+        hi = group.groupby("check")["ari"].max().reindex(checks)
+        ax.hlines(y + offset, lo, hi, color=colors[kind], lw=5, alpha=0.55, label=f"simulated, {'no classes' if kind == 'continuum' else kind}")
+    present = [c for c in checks if c in real.index]
+    ax.plot(real.reindex(present).to_numpy(), [checks.index(c) for c in present], "o", color=RUST, ms=7, label="real data", zorder=3)
+    ax.axvline(ARI_PASS, color=INK, lw=1, ls=":")
+    ax.text(ARI_PASS, len(checks) - 0.45, f" pass line {ARI_PASS}", fontsize=7, va="top")
+    ax.set_yticks(y)
+    ax.set_yticklabels(checks)
+    ax.invert_yaxis()
+    ax.set_xlim(0, 1.02)
+    ax.set_xlabel("adjusted Rand index")
+    ax.legend(frameon=False, fontsize=7.5, loc="lower left")
+    ax.set_title("Replication checks on the real data and on data with known structure", fontsize=9, loc="left")
     tidy(ax)
     fig.tight_layout()
     fig.savefig(path, dpi=170)
@@ -464,10 +500,13 @@ def main() -> None:
     if (main_dir / "stability_calibration.csv").exists() and (main_dir / "stability_by_k.csv").exists():
         draw_stability_vs_simulation(main_dir / "stability_by_k.csv", main_dir / "stability_calibration.csv", out_dir / "stability_vs_simulation.png")
     draw_agreement_by_confidence(kdir, out_dir / "agreement_by_confidence.png")
+    if (kdir / "replication_calibration.csv").exists():
+        draw_replication_vs_simulation(kdir / "replication_calibration.csv", out_dir / "replication_vs_simulation.png")
 
     # ---- 8. tables carried over from the steps ------------------------------------------------------------
     for source in (
         kdir / "method_comparison.csv",
+        kdir / "replication_calibration.csv",
         main_dir / "stability_by_k.csv",
         main_dir / "k_rule_sensitivity.csv",
         main_dir / "heldout_selection.csv",

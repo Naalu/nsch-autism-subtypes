@@ -68,7 +68,7 @@ uv sync --group dev
 make test                      # unit tests on synthetic data (under a minute)
 make smoke                     # every step once at tiny settings (about 5 minutes)
 make fit                       # step 3: latent class models K = 1 to 8 (about 5 minutes)
-make sweep                     # steps 4 to 14 at K = 4 to 7, then the figures (3 to 4 hours)
+make sweep                     # steps 4 to 15 at K = 4 to 8, then the figures (4 to 5 hours)
 make download                  # optional: rebuild the analysis table from the Census files (about 60 MB)
 ```
 
