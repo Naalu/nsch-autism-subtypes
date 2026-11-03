@@ -156,7 +156,7 @@ This answers "how much structure is there, and which kind of model captures it m
 ## 5. A glossary
 
 - ARI (adjusted Rand index): agreement between two clusterings of the same items, 0 for chance and 1 for identical.
-- Bivariate residual: for one pair of conditions, how far the observed number of children with both is from what a model predicts. Values above 3.84 flag a pair the model fits poorly.
+- Bivariate residual: for one pair of conditions, how far the observed number of children with both is from what a model predicts, as a chi-square statistic with one degree of freedom. Values above 3.84 (the 5% point of that distribution) flag a pair the model fits poorly.
 - BIC: a model score that rewards fit and penalizes parameters. Lower is better. It is the usual way to choose the number of classes; on this data it keeps falling, so we report it and choose K by stability instead (see "Choosing K").
 - Bootstrap: resampling the data with replacement to see how much a result depends on the particular sample.
 - Class / cluster: a group of children found by a method. "Class" is the latent class word; "cluster" is the general word.
@@ -169,16 +169,19 @@ This answers "how much structure is there, and which kind of model captures it m
 - Jaccard: shared items divided by items in either set. Used as a distance between children (1 minus Jaccard) and as a stability score for classes.
 - K: the number of classes or clusters.
 - Latent class analysis: a model in which hidden classes explain the pattern of 0/1 answers.
+- Likelihood (log-likelihood): how probable the observed answers are under a model with given parameters; fitting means finding the parameters that make it highest. Logs are used so that products of many small probabilities become sums.
 - Latent trait model: a model in which a few hidden continuous scales explain the pattern of 0/1 answers. The continuous counterpart of latent class analysis.
 - Linkage: in hierarchical clustering, the rule for the distance between two groups. We use average linkage.
 - Prevalence: the share of children who have a condition.
 - Profile: a class's probability of each condition, as a row of numbers.
 - Plausible value: one random draw of a child's position from the range of positions consistent with their answers. Used for plotting children in the continuous model.
+- Posterior probability: a child's probability of belonging to each class once their answers are taken into account; the responsibilities are these, and a child's "class" is the one with the largest.
 - Responsibilities: for each child, the probability of belonging to each class.
 - Slope (or loading): in a latent trait model, how strongly a condition depends on a scale.
 - Stability (cluster stability): how reliably a class reappears when the sample is redrawn; scored with the bootstrap Jaccard.
 - Stratum, weight: survey design variables. The weight says how many U.S. children a sampled child represents; strata are the groups the sample was drawn within, needed for correct standard errors.
 - Topical file: the Census Bureau's name for the main NSCH data file for one year.
+- Varimax: a rotation of a latent trait model's slopes that makes each condition load mostly on one scale, so the scales are easier to name. It changes the labels, not the fit.
 
 ## 6. Where to go next
 
