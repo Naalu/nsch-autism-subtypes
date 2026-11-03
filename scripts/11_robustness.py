@@ -49,7 +49,9 @@ def weighted_refit(X: np.ndarray, weights: np.ndarray, k: int, n_starts: int, se
     """
     from stepmix import StepMix
 
-    model = StepMix(n_components=k, measurement="binary", n_init=n_starts, random_state=seed, abs_tol=1e-6, max_iter=500, verbose=0, progress_bar=0)
+    from nsch_subtypes.lca import MAX_ITER
+
+    model = StepMix(n_components=k, measurement="binary", n_init=n_starts, random_state=seed, abs_tol=1e-6, max_iter=MAX_ITER, verbose=0, progress_bar=0)
     model.fit(X.astype(float), sample_weight=weights / weights.mean())
     params = model.get_parameters()
     return np.asarray(params["weights"]), np.asarray(params["measurement"]["pis"]), model.predict_proba(X.astype(float))

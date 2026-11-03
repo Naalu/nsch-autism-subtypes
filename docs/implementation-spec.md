@@ -35,13 +35,15 @@ If the dependencies are already installed in a local `.venv`, you can run its Py
 ```powershell
 .venv/Scripts/python.exe -m pytest -q -m "not slow"
 .venv/Scripts/python.exe -m pytest -m slow -v
-.venv/Scripts/python.exe scripts/03_fit_lca.py --n-starts 20 --max-iter 2000 --permutation-null
+.venv/Scripts/python.exe scripts/03_fit_lca.py --n-starts 20 --permutation-null
 ```
 
-Step 3 also accepts `--max-iter` (default 500). In the October 31 real-data
-check, K=8 reached that limit; a separate 20-start run with `max_iter=2000`
-converged after 1,364 iterations for its best start. Its fit and diagnostics
-are in `results_ours/k8_extended/`. K=1 through K=7 converged at the default.
+The iteration cap is `lca.MAX_ITER` (2000), shared by step 3, every refit in
+steps 5 to 14 and the StepMix reference, so a converged fit means the same
+thing everywhere. Step 3 accepts `--max-iter` to override it. With a cap of
+500 the K=8 fit on the real data does not converge; at 2000 its best start
+converges after about 1,400 iterations. K=1 through K=7 converge well under
+500.
 
 The smoke tests exercise steps 3 through 14 and figure generation with both
 backends, using reduced starts, resamples, and simulation settings. They read
@@ -49,7 +51,7 @@ the committed analysis table; rebuilding the Census download is separate.
 They do not replace a full 200-resample analysis sweep. The weighted sensitivity
 fit in step 11 and the alternative methods in step 4 still use libraries by design.
 
-## 1. `lca.fit_lca(X, n_classes, n_starts=20, seed=0, tol=1e-6, max_iter=500) -> LCAResult`
+## 1. `lca.fit_lca(X, n_classes, n_starts=20, seed=0, tol=1e-6, max_iter=MAX_ITER) -> LCAResult`
 
 Bernoulli mixture (latent class model) fit by EM.
 

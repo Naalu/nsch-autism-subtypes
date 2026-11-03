@@ -43,6 +43,7 @@ import pandas as pd
 from _common import MAIN_YEARS, backend_or_exit, load_analysis, load_lca_fit, log, make_parser, save_json, save_lca_fit
 from nsch_subtypes.data import to_flag_matrix
 from nsch_subtypes.describe import class_profiles
+from nsch_subtypes.lca import MAX_ITER
 from nsch_subtypes.plots import bic_curve
 from nsch_subtypes.validate import shuffle_each_column
 
@@ -60,7 +61,7 @@ def main() -> None:
     parser.add_argument("--n-starts", type=int, default=20, help="random starts per K; the best is kept")
     # Some larger models need more EM rounds; expose the limit without
     # changing the algorithm defaults used elsewhere in the pipeline.
-    parser.add_argument("--max-iter", type=int, default=500, help="maximum EM iterations per start; increase if a fit does not converge")
+    parser.add_argument("--max-iter", type=int, default=MAX_ITER, help="maximum EM iterations per start (the package default, shared by every refit)")
     parser.add_argument("--permutation-null", action="store_true", help="also fit on column-shuffled data as a no-structure baseline")
     args = parser.parse_args()
 

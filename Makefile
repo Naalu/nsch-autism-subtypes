@@ -10,7 +10,7 @@ BACKEND ?= ours
 FIT_RESULTS = $(if $(filter reference,$(BACKEND)),results_reference,results)
 STARTS  ?= 20
 NBOOT   ?= 200
-KS      ?= 4 5 6 7
+KS      ?= 4 5 6 7 8
 
 .PHONY: help all download fit sweep choose calibrate figures compare overview test smoke lint clean
 
@@ -37,7 +37,7 @@ download:
 	$(PY) scripts/02_encode.py
 
 fit:
-	$(PY) scripts/03_fit_lca.py --backend $(BACKEND) --results $(FIT_RESULTS) --n-starts $(STARTS) --max-iter 2000 --permutation-null
+	$(PY) scripts/03_fit_lca.py --backend $(BACKEND) --results $(FIT_RESULTS) --n-starts $(STARTS) --permutation-null
 
 sweep:
 	BACKEND=$(BACKEND) STARTS=$(STARTS) NBOOT=$(NBOOT) bash scripts/sweep_k.sh $(KS)

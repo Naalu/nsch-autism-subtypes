@@ -89,8 +89,10 @@ class LCAResult:
         """Bayesian information criterion, ``-2 * log_likelihood + n_parameters * ln(n)``. Lower is better.
 
         BIC rewards fit (the first term) and penalizes complexity (the second).
-        We use it to choose K: adding a class always improves the fit, and BIC
-        asks whether the improvement is worth the extra parameters.
+        Adding a class always improves the fit; BIC asks whether the improvement
+        is worth the extra parameters. On this data it keeps falling through
+        K = 8, so K is chosen by the stability rule in step 13 and BIC is
+        reported alongside.
         """
         n_children = self.responsibilities.shape[0] if n is None else n
         return -2.0 * self.log_likelihood + self.n_parameters * np.log(n_children)
@@ -141,13 +143,20 @@ def _expectation_step(
     return responsibilities, log_likelihood
 
 
+# Iteration cap shared by every fit in the pipeline (step 3, the refits in
+# steps 5 to 14, and the StepMix reference). With 20 starts the K=8 fit on the
+# real data needs more than 500 rounds to converge, so one cap lives here and
+# the scripts do not set their own.
+MAX_ITER = 2000
+
+
 def fit_lca(
     X: np.ndarray,
     n_classes: int,
     n_starts: int = 20,
     seed: int = 0,
     tol: float = 1e-6,
-    max_iter: int = 500,
+    max_iter: int = MAX_ITER,
 ) -> LCAResult:
     """Fit a latent class model with ``n_classes`` classes to a 0/1 matrix.
 
@@ -175,17 +184,14 @@ def fit_lca(
     -------
     LCAResult
 
-    Implementation notes (full contract in docs/implementation-spec.md)
-    ---------------------------------------------------------------------------------
-    - Work in log space and use the log-sum-exp trick in the E-step.
-      Multiplying many small condition probabilities can underflow; adding
-      their logarithms and normalizing in log space avoids that problem.
-    - After each M-step clip the rates to ``[1e-6, 1 - 1e-6]`` so ``log(0)``
-      never happens.
-    - Initialize each start with rates drawn uniformly from (0.2, 0.8) and equal class sizes.
-    - When ``n_classes == 1`` there is nothing to iterate: the rates are the
-      column means. Return a valid LCAResult anyway (the K=1 fit is the
-      baseline on the BIC curve).
+    Notes
+    -----
+    The E-step works in log space with the log-sum-exp trick, since the product
+    of 18 small probabilities underflows. Rates are clipped to ``[1e-6, 1 - 1e-6]``
+    after each M-step. Each start draws rates uniformly from (0.2, 0.8) with
+    equal class sizes. For ``n_classes == 1`` the rates are the column means and
+    no iteration is needed. See ``docs/implementation-spec.md`` for the contract
+    shared with the StepMix reference.
     """
     # Validate once, before any random starts or numerical work.
     flag_matrix = np.asarray(X, dtype=float)
