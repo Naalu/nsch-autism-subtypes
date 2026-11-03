@@ -137,6 +137,7 @@ Fit on 2016-21 (model A), refit on 2022-24 (model B), compare on the 2022-24 chi
 |---|---|
 | `heldout_selection.csv` | Each model fit on earlier years and scored on later ones: `split` (`2022_24` or `2025`), `family`, `size`, `n_parameters`, `train_ll`, `heldout_ll`, `heldout_ll_per_child`, `diff_from_best`, `diff_se` (paired standard error of that difference). |
 | `stability_by_k.csv` | For each K with a bootstrap on file: `min_jaccard` (the least stable class), `mean_jaccard`, `all_stable`, and the `folder` it came from. |
+| `k_rule_sensitivity.csv` | The K the rule picks at thresholds 0.6, 0.7, 0.75 and 0.8 with the first 50, 100 and 200 resamples of each `stability_jaccard.npy`: `k_passing`, `chosen_k_largest_passing` (our rule) and `k_most_stable` (the K with the highest least-stable class). |
 | `model_choice.json` | `chosen_k`, `rule`, `k_with_bootstrap` (the K values the rule could consider), `k_untested_above_choice`, and `heldout` (the summary of the held-out comparison). Every later script without `--k` reads `chosen_k` from here. |
 
 ### Step 14, `scripts/14_shape_and_stability.py` (main folder)

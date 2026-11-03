@@ -84,3 +84,35 @@ def test_backend_or_exit_names_a_missing_method():
         backend_or_exit("ours", "no_such_method")
     with pytest.raises(SystemExit, match="Unknown backend"):
         backend_or_exit("nope", "lca")
+
+
+def _load_step(name: str):
+    import importlib.util
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[1] / "scripts" / name
+    spec = importlib.util.spec_from_file_location(name.replace(".py", ""), path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_k_rule_sensitivity_reads_the_saved_jaccard_arrays(tmp_path):
+    step13 = _load_step("13_heldout_selection.py")
+    main = tmp_path / "results"
+    main.mkdir()
+    # K=3: every class stable at any threshold. K=4: one class at 0.65, so it
+    # passes only at 0.6. K=5: one class dissolved. Stability falls with K.
+    for k, floor in ((3, 0.95), (4, 0.65), (5, 0.40)):
+        folder = tmp_path / f"results_k{k}"
+        folder.mkdir()
+        jaccard = np.full((k, 200), 0.9)
+        jaccard[-1] = floor
+        np.save(folder / "stability_jaccard.npy", jaccard)
+    table = step13.rule_sensitivity(main)
+    assert set(table["n_resamples"]) == {50, 100, 200}
+    at = table.set_index(["threshold", "n_resamples"])
+    assert at.loc[(0.6, 200), "chosen_k_largest_passing"] == 4
+    assert at.loc[(0.75, 200), "chosen_k_largest_passing"] == 3
+    assert (table["k_most_stable"] == 3).all()
+    assert step13.rule_sensitivity(tmp_path / "nowhere").empty

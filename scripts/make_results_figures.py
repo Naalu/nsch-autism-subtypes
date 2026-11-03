@@ -469,6 +469,7 @@ def main() -> None:
     for source in (
         kdir / "method_comparison.csv",
         main_dir / "stability_by_k.csv",
+        main_dir / "k_rule_sensitivity.csv",
         main_dir / "heldout_selection.csv",
         main_dir / "latent_density.csv",
         main_dir / "stability_calibration.csv",
