@@ -63,20 +63,6 @@ def test_scratch_kmeans_inertia_matches_returned_labels_and_centers():
     assert np.array_equal(fit.labels, cluster_kmeans(X, 3, max_iter=1).labels)
 
 
-# ---------------------------------------------------------------------------- #
-# Original figure and call code
-# ---------------------------------------------------------------------------- #
-
-##### commented out now that the other bits have been implemented so that it will count
-##### as a failure if it actually fails
-# def call_or_skip(function, *args, **kwargs):
-#     """Call the function; if it is still a stub, skip the test instead of failing it."""
-#     try:
-#         return function(*args, **kwargs)
-#     except NotImplementedError as exc:
-#         pytest.skip(str(exc))
-
-
 @pytest.fixture(scope="module")
 def data():
     """2,000 fake children, 10 items, 3 well-separated planted classes."""
