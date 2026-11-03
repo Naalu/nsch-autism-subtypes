@@ -37,7 +37,7 @@ download:
 	$(PY) scripts/02_encode.py
 
 fit:
-	$(PY) scripts/03_fit_lca.py --backend $(BACKEND) --results $(FIT_RESULTS) --n-starts $(STARTS) --permutation-null
+	$(PY) scripts/03_fit_lca.py --backend $(BACKEND) --results $(FIT_RESULTS) --n-starts $(STARTS) --max-iter 2000 --permutation-null
 
 sweep:
 	BACKEND=$(BACKEND) STARTS=$(STARTS) NBOOT=$(NBOOT) bash scripts/sweep_k.sh $(KS)
