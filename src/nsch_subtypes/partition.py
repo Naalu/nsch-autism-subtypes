@@ -10,8 +10,8 @@ the 0/1 flags is what Vargason et al. (2019) used for the same kind of data,
 so it was added as a second option. Which one the paper reports is an open
 decision (see ``docs/validation-checklist.md``).
 
-As with the other methods, the algorithm is implemented by the team if we
-adopt it; ``reference.cluster_kmeans_sklearn`` is the library version.
+This file implements Lloyd's algorithm using NumPy only, selected with
+``--backend ours``; ``reference.cluster_kmeans_sklearn`` is the library version.
 
 How k-means works (Lloyd's algorithm)
 -------------------------------------
@@ -54,6 +54,16 @@ class PartitionResult:
     inertia: float
 
 
+def _squared_distances(flag_matrix: np.ndarray, centers: np.ndarray) -> np.ndarray:
+    """Return the squared distance from every child to every center.
+
+    Broadcasting creates a (children, clusters, conditions) table of
+    differences. Summing over conditions leaves (children, clusters).
+    """
+    differences = flag_matrix[:, None, :] - centers[None, :, :]
+    return (differences**2).sum(axis=2)
+
+
 def cluster_kmeans(
     X: np.ndarray,
     n_clusters: int,
@@ -80,4 +90,50 @@ def cluster_kmeans(
     -------
     PartitionResult
     """
-    raise NotImplementedError("cluster_kmeans is implemented by the project team; see docs/implementation-spec.md")
+    flag_matrix = np.asarray(X, dtype=float)
+    if flag_matrix.ndim != 2 or min(flag_matrix.shape) == 0 or not np.isin(flag_matrix, [0, 1]).all():
+        raise ValueError("X must be a nonempty binary matrix")
+    n_children = len(flag_matrix)
+    if not isinstance(n_clusters, (int, np.integer)) or not 1 <= n_clusters <= n_children:
+        raise ValueError("n_clusters must be between 1 and the number of rows")
+    if n_starts < 1 or max_iter < 1:
+        raise ValueError("n_starts and max_iter must be positive")
+    if any(not isinstance(value, (int, np.integer)) for value in (n_starts, max_iter)):
+        raise ValueError("n_starts and max_iter must be integers")
+
+    random_generator = np.random.default_rng(seed)
+    best_partition = None
+    for _start in range(n_starts):
+        # Choose distinct row positions. Identical profiles can still occur
+        # in different rows, so empty clusters are handled below.
+        starting_rows = random_generator.choice(n_children, n_clusters, replace=False)
+        centers = flag_matrix[starting_rows].copy()
+        previous_labels = None
+
+        for _iteration in range(max_iter):
+            # Assignment step: choose the nearest center for each child.
+            squared_distances = _squared_distances(flag_matrix, centers)
+            labels = squared_distances.argmin(axis=1)
+            if previous_labels is not None and np.array_equal(labels, previous_labels):
+                break
+
+            # Update step: each center becomes its members' mean profile.
+            # Keep the previous center when a cluster has no members.
+            for cluster_index in range(n_clusters):
+                cluster_members = flag_matrix[labels == cluster_index]
+                if len(cluster_members) > 0:
+                    centers[cluster_index] = cluster_members.mean(axis=0)
+            previous_labels = labels.copy()
+
+        # Reassign against the final centers, including when the iteration
+        # cap stopped us immediately after a center update.
+        squared_distances = _squared_distances(flag_matrix, centers)
+        labels = squared_distances.argmin(axis=1)
+        assigned_distances = squared_distances[np.arange(n_children), labels]
+        inertia = float(assigned_distances.sum())
+
+        # Lower inertia means a tighter partition; keep the best start.
+        if best_partition is None or inertia < best_partition.inertia:
+            best_partition = PartitionResult(labels=labels, centers=centers, inertia=inertia)
+
+    return best_partition

@@ -5,7 +5,7 @@
 
 Autism is one diagnosis that covers very different children. Studies of hospital and clinic records keep finding three or four "subtypes" based on which other conditions a child has (ADHD, anxiety, epilepsy, and so on), but almost none of them check whether the same groups appear in a second, independent set of children.
 
-This project asks the question on a national survey instead: ten years of the National Survey of Children's Health (2016 to 2025), 11,370 autistic children aged 6 to 17, and 18 parent-reported co-occurring conditions. We look for groups with a latent class model (our own implementation is being written for the course; until it passes its tests, the numbers here come from the StepMix library), then put the groups through checks we fixed in advance:
+This project asks the question on a national survey instead: ten years of the National Survey of Children's Health (2016 to 2025), 11,370 autistic children aged 6 to 17, and 18 parent-reported co-occurring conditions. We look for groups with a latent class model (our NumPy implementation is available for the course; the published numbers here come from the StepMix library), then put the groups through checks we fixed in advance:
 
 - a second clustering method has to find the same groups;
 - the groups have to come back in later survey years, including the 2025 file, which no modeling choice was made on;
@@ -25,6 +25,7 @@ Course project for CS 472/572 (Unsupervised Learning) at Northern Arizona Univer
 3. The numbered scripts in `scripts/`, in order. Each begins with a summary of what it does and why.
 4. `docs/validation-checklist.md`: what every check found, the decisions made after seeing results, and how the design compares with published subtyping studies.
 5. `docs/outputs.md`: every file the pipeline writes, and how to add a condition or a check.
+6. `reports/implementation-comparison.md`: manually maintained comparison notes; `scripts/compare_backends.py` supplies the tables, data, and diagrams.
 
 ## What's here
 
@@ -33,9 +34,9 @@ config/conditions.yaml       the 18 conditions, the survey items behind each, an
 src/nsch_subtypes/           the package
   config.py                  reads the config file
   data.py                    download, select children, build the 0/1 flags (steps 1 and 2)
-  lca.py                     latent class model fit by EM, from scratch (step 3; in progress)
-  hierarchical.py            Jaccard distance + average linkage, from scratch (step 4; in progress)
-  partition.py               k-means on the flags, from scratch (step 4; in progress)
+  lca.py                     latent class model fit by EM, from scratch (step 3)
+  hierarchical.py            Jaccard distance + average linkage, from scratch (step 4)
+  partition.py               k-means on the flags, from scratch (step 4)
   reference.py               StepMix, SciPy and scikit-learn versions, used to check ours
   validate.py                agreement, replication, stability, and the count-vs-class test
   latent_trait.py            the continuous alternative: a binary factor model with 1 to 4 dimensions
@@ -45,6 +46,8 @@ scripts/01_select.py ... 14_shape_and_stability.py  one pipeline step each; swee
 data/processed/              the analysis table (committed), codebook, selection counts
 reports/data-overview.md     the data in raw and processed form, with figures
 reports/figures/results/     the results figures (classes, severity, loadings, checks by K, BIC curves)
+reports/figures/results_ours/ from-scratch and implementation-comparison figures
+reports/implementation-comparison.md  manually maintained comparison notes
 paper/                       outline and draft sections
 docs/background.md           start here if the data or the methods are new to you
 docs/implementation-spec.md  what the from-scratch code has to do, and the tests it has to pass
@@ -69,7 +72,7 @@ make sweep                     # steps 4 to 14 at K = 4 to 7, then the figures (
 make download                  # optional: rebuild the analysis table from the Census files (about 60 MB)
 ```
 
-`data/processed/analysis.parquet` is committed, so nothing needs the download. `make` uses the StepMix / SciPy / scikit-learn versions by default; add `BACKEND=ours` for the from-scratch code once it is in place. Every script takes `--help`. Outputs go to `results/` and `results_k{K}/`; `docs/outputs.md` lists them.
+`data/processed/analysis.parquet` is committed, so nothing needs the download. `make` uses the StepMix / SciPy / scikit-learn versions by default; add `BACKEND=ours` for the NumPy from-scratch implementations. Every script takes `--help`. Outputs go to `results/` and `results_k{K}/`; `docs/outputs.md` lists them.
 
 The survey can also be read through the [nsch](https://github.com/NAU-ASD3/nsch-py) package: `uv sync --extra nsch`, then `scripts/01_select.py --loader nsch`. That path is experimental until nsch publishes a release.
 
@@ -105,6 +108,12 @@ Public files from the [Census Bureau](https://www.census.gov/programs-surveys/ns
 Two things to know up front. The flags are parent reports of a doctor's diagnosis ("a doctor told me, and my child currently has it"), so they mix having a condition with having had access to care. And each child appears once, so we can describe groups but not how a child moves between them.
 
 ## Status
+
+Implementation update, October 31, 2026: the NumPy LCA, hierarchical, and
+k-means implementations are available through `--backend ours`. The findings
+below describe the October 20 reference analysis; new implementation checks
+are kept separately in `results_ours/`. See `docs/implementation-spec.md` for
+verification commands.
 
 October 20, 2026. All steps run end to end on the real files with the reference backend. The from-scratch implementations are being written against `docs/implementation-spec.md`, and every number below will be re-verified with them.
 

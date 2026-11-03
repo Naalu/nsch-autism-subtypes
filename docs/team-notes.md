@@ -1,6 +1,19 @@
 # Team notes
 
-Where the project stands, what is waiting on what, and how to pick it up. Updated October 20, 2026.
+Where the project stands, what is waiting on what, and how to pick it up. Updated October 31, 2026.
+
+# Most recent update (oct. 31st)
+
+October 31 implementation update: all four NumPy functions in `lca.py`,
+`hierarchical.py`, and `partition.py` are implemented. `--backend ours` now
+selects working methods, and implementation tests no longer skip stubs.
+The original October 20 notes below describe the library analysis; their
+pending-implementation sections are historical. See `implementation-spec.md`
+for current verification commands. New real-data outputs are kept separately
+in `results_ours/` and `results_ours_k4/`.
+
+
+# Prior to most recent update (as of oct. 20th)
 
 ## Where we are
 
@@ -10,7 +23,7 @@ Short version: four broad profiles, the combinations of high and low on two axes
 
 Every number is from StepMix and will be re-verified with the from-scratch code once it lands. The paper will carry footnotes until then.
 
-## What waits on the from-scratch code
+## What waits on the from-scratch code 
 
 The three stubs are in `src/nsch_subtypes/lca.py`, `hierarchical.py` and `partition.py`; the contract is `docs/implementation-spec.md`. Order of value:
 

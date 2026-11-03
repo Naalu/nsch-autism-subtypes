@@ -58,6 +58,9 @@ def main() -> None:
     parser.add_argument("--k-min", type=int, default=1, help="smallest number of classes to try")
     parser.add_argument("--k-max", type=int, default=8, help="largest number of classes to try")
     parser.add_argument("--n-starts", type=int, default=20, help="random starts per K; the best is kept")
+    # Some larger models need more EM rounds; expose the limit without
+    # changing the algorithm defaults used elsewhere in the pipeline.
+    parser.add_argument("--max-iter", type=int, default=500, help="maximum EM iterations per start; increase if a fit does not converge")
     parser.add_argument("--permutation-null", action="store_true", help="also fit on column-shuffled data as a no-structure baseline")
     args = parser.parse_args()
 
@@ -75,7 +78,7 @@ def main() -> None:
     summary_rows = []
     bics = []
     for k in ks:
-        fit = fit_lca(flag_matrix, k, n_starts=args.n_starts, seed=args.seed)
+        fit = fit_lca(flag_matrix, k, n_starts=args.n_starts, seed=args.seed, max_iter=args.max_iter)
         bic = fit.bic()
         bics.append(bic)
         summary_rows.append(
@@ -97,7 +100,12 @@ def main() -> None:
     null_bics = None
     if args.permutation_null:
         shuffled = shuffle_each_column(flag_matrix, seed=args.seed)
-        null_bics = [fit_lca(shuffled, k, n_starts=args.n_starts, seed=args.seed).bic() for k in ks]
+        null_bics = []
+        for k in ks:
+            # Use the same fitting budget for observed and shuffled data,
+            # so their BIC comparison reflects structure rather than settings.
+            shuffled_fit = fit_lca(shuffled, k, n_starts=args.n_starts, seed=args.seed, max_iter=args.max_iter)
+            null_bics.append(shuffled_fit.bic())
         for row, null_bic in zip(summary_rows, null_bics, strict=False):
             row["bic_shuffled"] = null_bic
 
@@ -109,6 +117,9 @@ def main() -> None:
             "bic_argmin_k": ks[int(np.argmin(bics))],
             "backend": args.backend,
             "n_starts": args.n_starts,
+            "seed": args.seed,
+            # Record the iteration budget alongside the number of starts.
+            "max_iter": args.max_iter,
             "n_children": n_children,
             "flags": flags,
         },

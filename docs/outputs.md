@@ -10,11 +10,41 @@ This is the reference for anyone running, checking or changing the pipeline. It 
 | `results/` | The **main folder**. Step 3's fits for K = 1 to 8, step 13's held-out likelihood and its choice of K. If steps 4 to 12 were run without `--k`, their outputs for that K land here too. | No |
 | `results_k{K}/` | Steps 4 to 12 and the step 6 bootstrap at one K, run by `scripts/sweep_k.sh`. Each holds a copy of that K's step 3 fit, so the folder is self-contained. | No |
 | `results_ours/`, `results_ours_k{K}/` | The same, made with the from-scratch code (`BACKEND=ours`). | No |
-| `reports/figures/`, `reports/tables/` | The figures and tables the paper and slides use, drawn from the folders above by `scripts/make_results_figures.py` and `scripts/make_data_overview.py`. | Yes |
+| `reports/figures/results/` | Reference research figures. | Yes |
+| `reports/figures/results_ours/` | From-scratch research figures, implementation-comparison charts, and explicitly labeled verification figures. | Yes |
+| `reports/tables/` | Reference summary tables and shared backend-comparison tables. | Yes |
+| `reports/tables/results_ours/` | From-scratch research summary tables, kept separate from the reference tables. | Yes |
+| `reports/implementation-comparison.md` | Manually maintained comparison notes; not written by the comparison script. | Yes |
 
 **The canonical numbers are in `reports/tables/`.** Those files are regenerated from the result folders by `make figures` and committed, so the numbers in the paper can always be traced to a file in the repository. The result folders are scratch space: they can be deleted and rebuilt with `make all`.
 
 The per-K folders must sit next to the main folder and be named after it (`results` and `results_k4`, or `results_ours` and `results_ours_k4`). Steps 13 and 14 and the figures script find them by that name.
+
+## Comparing the implementations
+
+The comparison script supplies information for report writing. It does not
+create or overwrite Markdown reports; narrative notes are maintained manually.
+
+`python scripts/compare_backends.py --k 4` reads saved fits from `results/` and
+`results_ours/`. It checks child identities and condition order, matches the
+classes, and writes:
+
+- `reports/tables/backend_comparison.csv`: likelihood, BIC, ARI, rate gaps, and convergence by K.
+- `reports/tables/backend_condition_rates.csv`: the matched values behind the profile diagrams.
+- `reports/figures/results_ours/backend_bic.png`: BIC overlays and differences.
+- `reports/figures/results_ours/backend_profiles.png`: matched profiles side by side.
+- `reports/figures/results_ours/backend_rate_differences.png`: signed differences in percentage points.
+- `results_ours/backend_comparison.json`: comparison metrics, the profile K, input locations, and recorded fit settings.
+
+Figures beginning `verification_k3_` came from the earlier reduced-start check;
+they are not the main K=4 research analysis. Its raw artifacts and provenance
+are archived in `results_ours/verification/`. The comparison charts use separate
+20-start K=1..4 fits. No full bootstrap sweep is implied by these outputs.
+
+`make figures BACKEND=ours`, or
+`python scripts/make_results_figures.py --results results_ours`, writes research
+figures to `reports/figures/results_ours/` and tables to
+`reports/tables/results_ours/`. Reference destinations are unchanged.
 
 ## Fields that recur
 
