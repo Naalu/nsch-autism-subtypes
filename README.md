@@ -5,7 +5,7 @@
 
 Autism is one diagnosis that covers very different children. Studies of hospital and clinic records keep finding three or four "subtypes" based on which other conditions a child has (ADHD, anxiety, epilepsy, and so on), but almost none of them check whether the same groups appear in a second, independent set of children.
 
-This project asks the question on a national survey instead: ten years of the National Survey of Children's Health (2016 to 2025), 11,370 autistic children aged 6 to 17, and 18 parent-reported co-occurring conditions. We look for groups with a latent class model (our NumPy implementation is available for the course; the published numbers here come from the StepMix library), then put the groups through checks we fixed in advance:
+This project asks the question on a national survey instead: ten years of the National Survey of Children's Health (2016 to 2025), 11,370 autistic children aged 6 to 17 (8,891 with complete answers in the 2016 to 2024 fitting sample, 1,505 more in 2025), and 18 parent-reported co-occurring conditions. We look for groups with a latent class model, fit by our own NumPy implementation (the StepMix library reproduces it at ARI 0.99), then put the groups through checks we fixed in advance:
 
 - a second clustering method has to find the same groups;
 - the groups have to come back in later survey years, including the 2025 file, which no modeling choice was made on;

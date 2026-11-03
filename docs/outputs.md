@@ -12,7 +12,7 @@ This is the reference for anyone running, checking or changing the pipeline. It 
 | `results_reference/`, `results_reference_k{K}/` | The same, made with StepMix / SciPy / scikit-learn (`BACKEND=reference`), as the check on our code. | No |
 | `reports/figures/results/`, `reports/tables/` | The results figures and summary tables, drawn from `results/`. | Yes |
 | `reports/figures/results_reference/`, `reports/tables/results_reference/` | The same figures and tables from a reference run, if one is drawn. Kept separate so they never overwrite the main ones. | Yes |
-| `reports/figures/backend_comparison/`, `reports/tables/backend_comparison/` | Our code against StepMix: the comparison charts, plus the labeled `verification_k3_` figures and tables from the first integration check. | Yes |
+| `reports/figures/backend_comparison/` | Our code against StepMix: BIC overlay, matched profiles and rate differences. | Yes |
 | `reports/implementation-comparison.md` | Manually maintained comparison notes; not written by the comparison script. | Yes |
 
 **The canonical numbers are in `reports/tables/`.** Those files are regenerated from the result folders by `make figures` and committed, so the numbers in the paper can always be traced to a file in the repository. The result folders are scratch space: they can be deleted and rebuilt with `make all`.
@@ -35,10 +35,9 @@ order, matches the classes, and writes:
 - `reports/figures/backend_comparison/backend_rate_differences.png`: signed differences in percentage points.
 - `results/backend_comparison.json`: comparison metrics, the profile K, input locations, and recorded fit settings.
 
-Figures beginning `verification_k3_` came from the earlier reduced-start check;
-they are not the main K=4 research analysis. Its raw artifacts and provenance
-were archived in `results_ours/verification/` on the machine that ran it (the folder name before November). The comparison charts use separate
-20-start K=1..4 fits. No full bootstrap sweep is implied by these outputs.
+The comparison charts use the 20-start fits from `make fit` with each
+backend; they say how closely the two implementations agree, not whether the
+classes are real.
 
 `make figures BACKEND=reference`, or
 `python scripts/make_results_figures.py --results results_reference`, writes
@@ -77,7 +76,7 @@ The profile CSVs (`profiles_*.csv`) have one row per class and one column per co
 
 | File | Contents |
 |---|---|
-| `crosscheck_kmeans.json`, `crosscheck_hierarchical.json` | The recurring keys, plus `ari_by_confidence` (ARI among children above 0.7, 0.8 and 0.9 class probability), `cluster_sizes_matched`, and `crosstab_lca_rows_method_cols` (how many children each pair of class and cluster shares). The k-means file also has `by_seed` (inertia and ARI for each seed's solution) and `ari_range_across_seeds`; the reported `ari` is the lowest-inertia solution's. |
+| `crosscheck_kmeans.json`, `crosscheck_hierarchical.json` | The recurring keys, plus `ari_by_confidence` (ARI among children whose largest class probability is at least 0.6, 0.7, 0.8 and 0.9), `cluster_sizes_matched`, and `crosstab_lca_rows_method_cols` (how many children each pair of class and cluster shares). The k-means file also has `by_seed` (inertia and ARI for each seed's solution) and `ari_range_across_seeds`; the reported `ari` is the lowest-inertia solution's. |
 | `method_comparison.csv` | `--method alternatives`: seven clustering methods against the latent classes, with `ari_all`, ARI at each confidence level, and `largest_cluster_share` (near 1 means the method put almost everyone in one cluster). |
 | `profiles_{method}_k{K}.csv` | Condition rates in each cluster of the second method. |
 

@@ -1,6 +1,6 @@
 # The data, raw and processed
 
-What the National Survey of Children's Health looks like as it comes from the Census Bureau, what we keep, and what the models see. Numbers are from the build of October 19, 2026 (`make data`). Figures are in `figures/`, tables in `tables/`.
+What the National Survey of Children's Health looks like as it comes from the Census Bureau, what we keep, and what the models see. Numbers are from the build of October 19, 2026 (`make download`, then `make overview`). Figures are in `figures/`, tables in `tables/`.
 
 ## 1. Where the data comes from
 
