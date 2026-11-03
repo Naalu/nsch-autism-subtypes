@@ -118,16 +118,23 @@ def _expectation_step(
     flag_matrix: np.ndarray,
     class_sizes: np.ndarray,
     condition_rates: np.ndarray,
+    absent: np.ndarray | None = None,
 ) -> tuple[np.ndarray, float]:
     """Return class probabilities for each child and the total log-likelihood.
 
     The intermediate tables have shape (children, classes). Computing in
     log space avoids multiplying many small condition probabilities.
+    ``absent`` marks answered-no items; it defaults to ``1 - flag_matrix``.
+    When some answers are missing, ``flag_matrix`` holds 0 for them and
+    ``absent`` holds 0 too, so a blank contributes nothing to either sum:
+    the child is scored on the items the parent answered.
     """
+    if absent is None:
+        absent = 1 - flag_matrix
     # A present condition contributes log(theta); an absent one contributes
     # log(1 - theta). Adding log(class size) gives the joint probability.
     log_joint = flag_matrix @ np.log(condition_rates).T
-    log_joint += (1 - flag_matrix) @ np.log1p(-condition_rates).T
+    log_joint += absent @ np.log1p(-condition_rates).T
     safe_class_sizes = np.maximum(class_sizes, np.finfo(float).tiny)
     log_joint += np.log(safe_class_sizes)
 
@@ -176,8 +183,12 @@ def fit_lca(
     ----------
     X : ndarray, shape (n, J)
         The flag matrix: one row per child, one column per condition, values
-        0 or 1, no missing values. (``X`` is the usual name for a data matrix
-        in machine learning code.)
+        0 or 1. (``X`` is the usual name for a data matrix in machine learning
+        code.) NaN marks a missing answer: that item is left out of the
+        child's likelihood and out of the rate it would have counted toward,
+        which is maximum likelihood under missing at random. The main
+        analysis drops incomplete children instead; step 11 uses this to
+        check that the choice does not matter.
     n_classes : int
         K, at least 1.
     n_starts : int
@@ -207,8 +218,9 @@ def fit_lca(
     """
     # Validate once, before any random starts or numerical work.
     flag_matrix = np.asarray(X, dtype=float)
-    if flag_matrix.ndim != 2 or min(flag_matrix.shape) == 0 or not np.isin(flag_matrix, [0, 1]).all():
-        raise ValueError("X must be a nonempty binary matrix")
+    missing = np.isnan(flag_matrix)
+    if flag_matrix.ndim != 2 or min(flag_matrix.shape) == 0 or not np.isin(flag_matrix[~missing], [0, 1]).all():
+        raise ValueError("X must be a nonempty binary matrix (NaN allowed for missing answers)")
     if not isinstance(n_classes, (int, np.integer)) or n_classes < 1:
         raise ValueError("n_classes must be a positive integer")
     if any(not isinstance(value, (int, np.integer)) for value in (n_starts, max_iter)):
@@ -216,13 +228,21 @@ def fit_lca(
     if n_starts < 1 or max_iter < 1 or not np.isfinite(tol) or tol < 0:
         raise ValueError("n_starts and max_iter must be positive and tol finite and nonnegative")
     n_children, n_conditions = flag_matrix.shape
+    absent = None  # the complete-data path is unchanged, so results with no blanks are bit-identical
+    observed = None
+    if missing.any():
+        observed = (~missing).astype(float)
+        flag_matrix = np.where(missing, 0.0, flag_matrix)
+        absent = observed - flag_matrix
 
     # With one class, the best condition rates are simply the column means.
     # Clipping also handles conditions that are always absent or present.
     if n_classes == 1:
-        condition_rates = np.clip(flag_matrix.mean(axis=0, keepdims=True), 1e-6, 1 - 1e-6)
+        answered = observed.sum(axis=0) if observed is not None else np.full(n_conditions, float(n_children))
+        column_rates = np.divide(flag_matrix.sum(axis=0), answered, out=np.full(n_conditions, 0.5), where=answered > 0)
+        condition_rates = np.clip(column_rates[None, :], 1e-6, 1 - 1e-6)
         class_sizes = np.ones(1)
-        responsibilities, log_likelihood = _expectation_step(flag_matrix, class_sizes, condition_rates)
+        responsibilities, log_likelihood = _expectation_step(flag_matrix, class_sizes, condition_rates, absent)
         return LCAResult(
             n_classes=1,
             class_sizes=class_sizes,
@@ -240,7 +260,7 @@ def fit_lca(
         # one seeded generator makes the entire sequence reproducible.
         condition_rates = random_generator.uniform(0.2, 0.8, size=(n_classes, n_conditions))
         class_sizes = np.full(n_classes, 1 / n_classes)
-        responsibilities, log_likelihood = _expectation_step(flag_matrix, class_sizes, condition_rates)
+        responsibilities, log_likelihood = _expectation_step(flag_matrix, class_sizes, condition_rates, absent)
         converged = False
 
         for _iteration in range(1, max_iter + 1):
@@ -249,11 +269,13 @@ def fit_lca(
             class_membership_totals = responsibilities.sum(axis=0)
             class_sizes = class_membership_totals / n_children
             weighted_condition_totals = responsibilities.T @ flag_matrix
+            # With blanks, each rate's denominator is the class members who answered that item.
+            answered_totals = class_membership_totals[:, None] if observed is None else responsibilities.T @ observed
             condition_rates = np.divide(
                 weighted_condition_totals,
-                class_membership_totals[:, None],
+                answered_totals,
                 out=condition_rates.copy(),
-                where=class_membership_totals[:, None] > 0,
+                where=answered_totals > 0,
             )
             # The divide above keeps the old rates for an empty class.
             # Clipping prevents log(0) in the next E-step.
@@ -262,7 +284,7 @@ def fit_lca(
             # E-step: score the updated parameters. Do this before checking
             # convergence so the returned probabilities and score describe
             # the returned parameters, even at the iteration limit.
-            responsibilities, updated_log_likelihood = _expectation_step(flag_matrix, class_sizes, condition_rates)
+            responsibilities, updated_log_likelihood = _expectation_step(flag_matrix, class_sizes, condition_rates, absent)
             improvement = updated_log_likelihood - log_likelihood
             log_likelihood = updated_log_likelihood
             if 0 <= improvement < tol:

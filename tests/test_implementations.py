@@ -216,10 +216,11 @@ def test_scratch_rejects_invalid_input(method):
     function = get_backend("ours")[method]
     invalid_inputs = [
         (np.empty((0, 2)), 1),  # No children.
-        (np.array([[0, np.nan]]), 1),  # A missing condition flag.
         (np.array([[0, 2]]), 1),  # A condition flag outside 0/1.
         (np.zeros((2, 2)), 0),  # An impossible number of classes.
     ]
+    if method != "lca":  # the latent class model accepts NaN as a missing answer; the distance methods do not
+        invalid_inputs.append((np.array([[0, np.nan]]), 1))
     for flag_matrix, n_groups in invalid_inputs:
         with pytest.raises(ValueError):
             function(flag_matrix, n_groups)
@@ -253,3 +254,20 @@ def test_scipy_reference_returns_exactly_k_clusters_when_merge_heights_tie():
     for k in (3, 4, 6):
         labels = reference.cluster_scipy(X, k).labels
         assert len(np.unique(labels)) == k, f"asked for {k} clusters"
+
+
+def test_lca_with_missing_answers_recovers_the_planted_classes(data):
+    from nsch_subtypes.lca import fit_lca
+
+    flag_matrix, true_labels, true_rates = data
+    complete = fit_lca(flag_matrix, 3, n_starts=5, seed=0)
+    holes = flag_matrix.astype(float)
+    holes[np.random.default_rng(9).random(holes.shape) < 0.1] = np.nan  # 10% of answers blank, completely at random
+    fit = fit_lca(holes, 3, n_starts=5, seed=0)
+    assert adjusted_rand_index(fit.labels, true_labels) > 0.85
+    assert adjusted_rand_index(fit.labels, complete.labels) > 0.85
+    perm = match_classes(complete.condition_rates, fit.condition_rates)
+    assert np.abs(fit.condition_rates[perm] - complete.condition_rates).max() < 0.05
+    # One class: the rates are the column means over the answers given.
+    one = fit_lca(holes, 1)
+    assert one.condition_rates[0] == pytest.approx(np.nanmean(holes, axis=0), abs=1e-9)

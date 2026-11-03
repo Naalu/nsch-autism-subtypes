@@ -101,6 +101,25 @@ def bic_gap_curve(fit_lca, X: np.ndarray, k_max: int, n_starts: int, seed: int) 
     }
 
 
+def bootstrap_slope_se(X: np.ndarray, full, n_boot: int, seed: int) -> np.ndarray:
+    """Bootstrap standard errors for the rotated slopes of a fitted latent trait model.
+
+    Each resample is refit and its slopes rotated onto the full-data slopes by
+    orthogonal Procrustes, since rotation and sign are arbitrary and would
+    otherwise swamp the spread. Returns an array shaped like ``full.slopes``.
+    """
+    rng = np.random.default_rng(seed + 31)
+    draws = []
+    for b in range(n_boot):
+        rows = rng.integers(0, X.shape[0], X.shape[0])
+        fit = fit_latent_trait(X[rows], n_dims=full.n_dims, n_quadrature=full.n_quadrature, seed=seed)
+        rotation, _ = orthogonal_procrustes(fit.slopes, full.slopes)
+        draws.append(fit.slopes @ rotation)
+        if (b + 1) % 10 == 0:
+            log(f"   slope bootstrap {b + 1}/{n_boot}")
+    return np.std(draws, axis=0, ddof=1)
+
+
 def summarize_residuals(name: str, table: pd.DataFrame) -> dict:
     worst = table.head(3)
     return {
@@ -124,6 +143,7 @@ def main() -> None:
     parser.add_argument("--sim-k-max", type=int, default=6, help="largest K fit to each simulated dataset")
     parser.add_argument("--sim-replicates", type=int, default=3, help="simulated datasets per direction")
     parser.add_argument("--n-starts", type=int, default=10, help="starts per K on simulated data")
+    parser.add_argument("--n-boot-slopes", type=int, default=50, help="bootstrap resamples for the D = 2 slope standard errors (0 to skip)")
     parser.add_argument("--fits", type=Path, default=RESULTS_DIR, help="folder with step 3's lca_bic.csv and lca_k8.npz (default: results/)")
     args = parser.parse_args()
 
@@ -144,9 +164,18 @@ def main() -> None:
         traits[d] = fit_trait_checked(X, d, args.seed)
         t = traits[d]
         rows.append(
-            {"family": "latent trait", "size": d, "n_parameters": t.n_parameters, "log_likelihood": t.log_likelihood, "bic": t.bic(n), "converged": t.converged}
+            {
+                "family": "latent trait",
+                "size": d,
+                "n_parameters": t.n_parameters,
+                "log_likelihood": t.log_likelihood,
+                "bic": t.bic(n),
+                "converged": t.converged,
+                "at_bound": t.at_bound,
+            }
         )
-        log(f"latent trait D={d}: log-likelihood {t.log_likelihood:.1f}, BIC {t.bic(n):.1f}, converged={t.converged}")
+        flag = "; a slope is at the bound, so this fit is degenerate and its BIC is not comparable" if t.at_bound else ""
+        log(f"latent trait D={d}: log-likelihood {t.log_likelihood:.1f}, BIC {t.bic(n):.1f}, converged={t.converged}{flag}")
     bic_path = args.fits / "lca_bic.csv"
     if bic_path.exists():
         for _, r in pd.read_csv(bic_path).iterrows():
@@ -158,6 +187,7 @@ def main() -> None:
                     "log_likelihood": r["log_likelihood"],
                     "bic": r["bic"],
                     "converged": bool(r["converged"]),
+                    "at_bound": False,
                 }
             )
     comparison = pd.DataFrame(rows).sort_values("bic").reset_index(drop=True)
@@ -165,16 +195,24 @@ def main() -> None:
     out["model_comparison"] = comparison.to_dict(orient="records")
     log(comparison.round(1).to_string(index=False))
 
-    # ---- 2. loadings ----------------------------------------------------------------------
+    # ---- 2. loadings, with bootstrap standard errors for D = 2 --------------------------------
+    slope_se = bootstrap_slope_se(X, traits[2], args.n_boot_slopes, args.seed) if 2 in traits and args.n_boot_slopes > 1 else None
     for d in (2, 3):
         if d not in traits:
             continue
         loadings = pd.DataFrame(traits[d].slopes, columns=[f"dim{i + 1}_slope" for i in range(d)])
+        if d == 2 and slope_se is not None:
+            for i in range(d):
+                loadings.insert(loadings.columns.get_loc(f"dim{i + 1}_slope") + 1, f"dim{i + 1}_se", slope_se[:, i])
         loadings.insert(0, "condition", flags)
         loadings["intercept"] = traits[d].intercepts
         loadings["prevalence"] = X.mean(axis=0)
         loadings.to_csv(args.results / f"loadings_{d}d.csv", index=False)
         log(f"{d}-dimensional loadings:\n{loadings.round(2).to_string(index=False)}")
+    out["slope_bootstrap"] = {
+        "n_boot": args.n_boot_slopes if slope_se is not None else 0,
+        "aligned_by": "orthogonal Procrustes to the full-data rotated slopes",
+    }
 
     # ---- 3. local dependence -----------------------------------------------------------------
     residual_tables = {f"latent class K={k}": bivariate_residuals(X, *class_model_pair_probabilities(lca.class_sizes, lca.condition_rates), flags)}

@@ -118,7 +118,7 @@ Fit on 2016-21 (model A), refit on 2022-24 (model B), compare on the 2022-24 chi
 
 | File | Contents |
 |---|---|
-| `robustness.json` | `weighted_fit` (survey-weighted refit against the main fit), `dropped_vs_kept` (children dropped for a missing answer against those kept), `seed_sensitivity` (`vs_main`, `pairwise`, `min_pairwise_ari` across seeds). |
+| `robustness.json` | `weighted_fit` (survey-weighted refit against the main fit), `dropped_vs_kept` (children dropped for a missing answer against those kept), `missing_as_missing` (a refit on every child with blank answers left out of the likelihood, against the complete-case labels; `--backend ours` only), `seed_sensitivity` (`vs_main`, `pairwise`, `min_pairwise_ari` across seeds). |
 | `profiles_weighted_k{K}.csv` | The weighted fit's profiles. |
 | `dropped_vs_kept.csv` | The comparison of dropped and kept children as a table. |
 
@@ -126,8 +126,8 @@ Fit on 2016-21 (model A), refit on 2022-24 (model B), compare on the 2022-24 chi
 
 | File | Contents |
 |---|---|
-| `model_comparison.csv` | Latent trait models (D = 1 to 4) and latent class models (K = 1 to 8, read from `--fits`) in one table: `family`, `size` (D or K), `n_parameters`, `log_likelihood`, `bic`, `converged`. |
-| `loadings_2d.csv`, `loadings_3d.csv` | Slopes for each condition on each dimension after varimax rotation, plus `intercept` and `prevalence`. |
+| `model_comparison.csv` | Latent trait models (D = 1 to 4) and latent class models (K = 1 to 8, read from `--fits`) in one table: `family`, `size` (D or K), `n_parameters`, `log_likelihood`, `bic`, `converged`, `at_bound` (a slope ended on the bound: a degenerate fit whose BIC should not be compared). |
+| `loadings_2d.csv`, `loadings_3d.csv` | Slopes for each condition on each dimension after varimax rotation, plus `intercept` and `prevalence`. The two-dimensional file also has `dim1_se` and `dim2_se`, bootstrap standard errors from `--n-boot-slopes` refits (default 50) aligned to the full-data slopes by orthogonal Procrustes. |
 | `bivariate_residuals.csv` | For every pair of conditions under each model: `observed_both`, `expected_both`, `chi_square`. Above 3.84 means the model misses that pair. |
 | `factor_scores.npy` | Each child's position on the two dimensions. |
 | `dimensions.json` | `model_comparison`, a summary of `bivariate_residuals`, `age_and_period` (score correlations with age and year, and loading congruence between age bands), `quadrants` (the classes against a two-cut rule on the scores), and `simulation` (latent class BIC curves on data simulated from the continuous model and from the class model, beside the real curve). |
@@ -136,7 +136,7 @@ Fit on 2016-21 (model A), refit on 2022-24 (model B), compare on the 2022-24 chi
 
 | File | Contents |
 |---|---|
-| `heldout_selection.csv` | Each model fit on earlier years and scored on later ones: `split` (`2022_24` or `2025`), `family`, `size`, `n_parameters`, `train_ll`, `heldout_ll`, `heldout_ll_per_child`, `diff_from_best`, `diff_se` (paired standard error of that difference). |
+| `heldout_selection.csv` | Each model fit on earlier years and scored on later ones: `split` (`2022_24` or `2025`), `family`, `size`, `n_parameters`, `train_ll`, `heldout_ll`, `heldout_ll_per_child`, `diff_from_best`, `diff_se` (paired standard error of that difference), and the same against the best model not at the slope bound (`diff_from_best_interior`, `diff_interior_se`), with `at_bound` per row. |
 | `stability_by_k.csv` | For each K with a bootstrap on file: `min_jaccard` (the least stable class), `mean_jaccard`, `all_stable`, and the `folder` it came from. |
 | `k_rule_sensitivity.csv` | The K the rule picks at thresholds 0.6, 0.7, 0.75 and 0.8 with the first 50, 100 and 200 resamples of each `stability_jaccard.npy`: `k_passing`, `chosen_k_largest_passing` (our rule) and `k_most_stable` (the K with the highest least-stable class). |
 | `model_choice.json` | `chosen_k`, `rule`, `k_with_bootstrap` (the K values the rule could consider), `k_untested_above_choice`, and `heldout` (the summary of the held-out comparison). Every later script without `--k` reads `chosen_k` from here. |

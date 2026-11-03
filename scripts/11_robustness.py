@@ -130,6 +130,44 @@ def main() -> None:
     log(comparison.round(3).to_string(index=False))
     out["dropped_vs_kept"] = comparison.to_dict(orient="records")
 
+    # ---- 2b. keep the incomplete children, skipping their blank answers ------------------
+    # The main fit drops the children with any blank flag. Our EM can instead
+    # leave each blank out of that child's likelihood (maximum likelihood under
+    # missing at random). Refit that way on every child and compare the labels
+    # of the children both fits share.
+    if args.backend == "ours":
+        with_blanks = full.reset_index(drop=True)
+        X_blanks = with_blanks[all_flags].to_numpy(dtype=float)
+        fit_blanks = fit_lca(X_blanks, k, n_starts=args.n_starts, seed=args.seed)
+        perm = match_classes(main_fit.condition_rates, fit_blanks.condition_rates)
+        labels_blanks = relabel_to_match(fit_blanks.labels, perm)
+        is_complete = complete.to_numpy()
+        shared = ari_with_interval(
+            main_labels,
+            labels_blanks[is_complete],
+            main_fit.responsibilities.max(axis=1),
+            fit_blanks.responsibilities[is_complete].max(axis=1),
+            seed=args.seed,
+        )
+        out["missing_as_missing"] = {
+            "note": "every 2016-24 child, blank flags left out of the likelihood; ARI on the children the complete-case fit used",
+            "n_children": int(len(with_blanks)),
+            "n_with_blanks": int((~is_complete).sum()),
+            "ari_vs_complete_case": shared["ari"],
+            "ari_interval": [shared["ci_low"], shared["ci_high"]],
+            "ari_by_confidence": shared["ari_by_confidence"],
+            "class_sizes_matched": fit_blanks.class_sizes[perm],
+            "class_sizes_complete_case": main_fit.class_sizes,
+            "mean_abs_rate_difference_per_class": mean_rate_difference(main_fit.condition_rates, fit_blanks.condition_rates, perm),
+            "dropped_children_class_shares": np.bincount(labels_blanks[~is_complete], minlength=k) / max(1, (~is_complete).sum()),
+        }
+        log(
+            f"fit on all {len(with_blanks)} children with blanks skipped: ARI {shared['ari']:.3f} against the complete-case labels "
+            f"({shared['ci_low']:.3f} to {shared['ci_high']:.3f}); sizes {np.round(fit_blanks.class_sizes[perm], 3).tolist()}"
+        )
+    else:
+        log("missing-as-missing refit skipped: only the from-scratch EM handles blank answers")
+
     # ---- 3. seed sensitivity ------------------------------------------------------------
     seeds = [int(s) for s in args.seeds.split(",")]
     labelings = []

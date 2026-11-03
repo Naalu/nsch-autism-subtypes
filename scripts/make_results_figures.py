@@ -486,29 +486,46 @@ def main() -> None:
         comparison = pd.read_csv(comparison_path)
         heldout = pd.read_csv(heldout_path)
         fig, axes = plt.subplots(1, 3, figsize=(12, 3.5))
+        # Held-out panels are measured from the best model whose fit is not at the slope bound,
+        # when the table has that column (older tables only have the overall best).
+        diff, se = ("diff_from_best_interior", "diff_interior_se") if "diff_from_best_interior" in heldout else ("diff_from_best", "diff_se")
         panels = [
-            (axes[0], comparison, "bic", "BIC on 2016-24 (lower is better)", "in-sample"),
-            (axes[1], heldout[heldout["split"] == "2022_24"], "diff_from_best", "held-out log-likelihood minus best", "fit 2016-21, scored on 2022-24"),
-            (axes[2], heldout[heldout["split"] == "2025"], "diff_from_best", "held-out log-likelihood minus best", "fit 2016-24, scored on 2025"),
+            (axes[0], comparison, "bic", None, "BIC on 2016-24 (lower is better)", "in-sample"),
+            (axes[1], heldout[heldout["split"] == "2022_24"], diff, se, "held-out log-likelihood minus best", "fit 2016-21, scored on 2022-24"),
+            (axes[2], heldout[heldout["split"] == "2025"], diff, se, "held-out log-likelihood minus best", "fit 2016-24, scored on 2025"),
         ]
-        for ax, frame, column, ylabel, title in panels:
-            for family, color, marker in (("latent class", RUST, "o-"), ("latent trait", PURPLE, "s-")):
+        for ax, frame, column, se_column, ylabel, title in panels:
+            if column == "bic":
+                low, high = frame[column].min() - 300, frame[column].min() + 4000
+            else:
+                low, high = -700, 120
+            off_axis = []
+            for family, color, marker in (("latent class", RUST, "o"), ("latent trait", PURPLE, "s")):
                 f = frame[frame["family"] == family].sort_values("n_parameters")
-                ax.plot(f["n_parameters"], f[column], marker, color=color, label=family)
+                bound = f["at_bound"].astype(bool) if "at_bound" in f else pd.Series(False, index=f.index)
+                ok = f[~bound]
+                ax.plot(ok["n_parameters"], ok[column], marker + "-", color=color, label=family)
+                if se_column and se_column in ok:
+                    ax.errorbar(ok["n_parameters"], ok[column], yerr=1.96 * ok[se_column], fmt="none", ecolor=color, lw=0.8, capsize=2)
+                if bound.any():
+                    b = f[bound]
+                    ax.plot(b["n_parameters"], b[column], marker, mfc="white", color=color, label=f"{family}, slope at bound (degenerate)")
                 prefix = "K" if family == "latent class" else "D"
                 for _, r in f.iterrows():
-                    point = (r["n_parameters"], r[column])
-                    ax.annotate(f"{prefix}{int(r['size'])}", point, fontsize=6.5, xytext=(3, 3), textcoords="offset points")
-            if column == "diff_from_best":
+                    if not low <= r[column] <= high:
+                        off_axis.append(f"{prefix}{int(r['size'])}")
+                        continue
+                    ax.annotate(f"{prefix}{int(r['size'])}", (r["n_parameters"], r[column]), fontsize=6.5, xytext=(3, 3), textcoords="offset points")
+            if column != "bic":
                 ax.axhline(0, color=INK, lw=0.8)
-                ax.set_ylim(-700, 60)
-            else:
-                ax.set_ylim(frame[column].min() - 300, frame[column].min() + 4000)
+            ax.set_ylim(low, high)
+            if off_axis:
+                ax.text(0.98, 0.03, "below the axis: " + ", ".join(off_axis), transform=ax.transAxes, ha="right", fontsize=6.5, color=GRAY)
             ax.set_xlabel("number of parameters")
             ax.set_ylabel(ylabel)
             ax.set_title(title, fontsize=9, loc="left")
             tidy(ax)
-        axes[0].legend(frameon=False, fontsize=8)
+        axes[0].legend(frameon=False, fontsize=7)
         fig.tight_layout()
         fig.savefig(out_dir / "model_fit.png", dpi=170)
         plt.close(fig)
@@ -529,6 +546,8 @@ def main() -> None:
         kdir / "method_comparison.csv",
         kdir / "replication_calibration.csv",
         kdir / "shares_by_year.csv",
+        kdir / "loadings_2d.csv",
+        kdir / "model_comparison.csv",
         main_dir / "stability_by_k.csv",
         main_dir / "k_rule_sensitivity.csv",
         main_dir / "heldout_selection.csv",

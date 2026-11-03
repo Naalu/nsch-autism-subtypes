@@ -107,18 +107,28 @@ def score_split(fit_lca, train: np.ndarray, test: np.ndarray, k_max: int, d_max:
                 "train_ll": latent_trait_log_likelihood(checked, train),
                 "per_child": per_child,
                 "converged": fit.converged,
+                "at_bound": fit.at_bound,
             }
         )
-        log(f"   latent trait D={d}: held-out log-likelihood {per_child.sum():.1f} (converged={fit.converged})")
+        flag = "; a slope is at the bound (degenerate fit)" if fit.at_bound else ""
+        log(f"   latent trait D={d}: held-out log-likelihood {per_child.sum():.1f} (converged={fit.converged}{flag})")
     return rows
 
 
 def summarize(rows: list[dict], split: str) -> pd.DataFrame:
-    """Totals, per-child means, and the paired difference (with SE) from the best model in the split."""
+    """Totals, per-child means, and the paired difference (with SE) from the best model in the split.
+
+    Two references: the best model of all, and the best whose fit is not at
+    the slope bound. A model at the bound (a dimension collapsed onto one item)
+    can still predict well, but its likelihood depends on the bound and the
+    grid, so comparisons that matter are reported against the second.
+    """
     best = max(rows, key=lambda r: r["per_child"].sum())
+    interior = max((r for r in rows if not r.get("at_bound", False)), key=lambda r: r["per_child"].sum())
     out = []
     for r in rows:
         diff = r["per_child"] - best["per_child"]
+        diff_interior = r["per_child"] - interior["per_child"]
         out.append(
             {
                 "split": split,
@@ -130,7 +140,10 @@ def summarize(rows: list[dict], split: str) -> pd.DataFrame:
                 "heldout_ll_per_child": r["per_child"].mean(),
                 "diff_from_best": diff.sum(),
                 "diff_se": diff.std(ddof=1) * np.sqrt(len(diff)) if r is not best else 0.0,
+                "diff_from_best_interior": diff_interior.sum(),
+                "diff_interior_se": diff_interior.std(ddof=1) * np.sqrt(len(diff_interior)) if r is not interior else 0.0,
                 "converged": r.get("converged", True),
+                "at_bound": r.get("at_bound", False),
             }
         )
     return pd.DataFrame(out)
