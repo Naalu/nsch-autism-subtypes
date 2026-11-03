@@ -21,7 +21,7 @@ Ground rules:
 
 ## Running the implementations
 
-From the repository root, use `uv` to run the tests (this will work with every machine type - Windows, MacOS, Linx - given that ```uv``` is installed):
+From the repository root, use `uv` to run the tests (this works on Windows, macOS and Linux as long as `uv` is installed):
 
 ```bash
 uv run pytest -q -m "not slow"
@@ -35,9 +35,8 @@ If the dependencies are already installed in a local `.venv`, you can run its Py
 ```powershell
 .venv/Scripts/python.exe -m pytest -q -m "not slow"
 .venv/Scripts/python.exe -m pytest -m slow -v
-.venv/Scripts/python.exe scripts/03_fit_lca.py --backend ours --results results_ours --n-starts 20 --max-iter 2000 --permutation-null
+.venv/Scripts/python.exe scripts/03_fit_lca.py --n-starts 20 --max-iter 2000 --permutation-null
 ```
-
 
 Step 3 also accepts `--max-iter` (default 500). In the October 31 real-data
 check, K=8 reached that limit; a separate 20-start run with `max_iter=2000`

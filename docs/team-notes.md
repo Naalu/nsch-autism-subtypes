@@ -9,8 +9,10 @@ October 31 implementation update: all four NumPy functions in `lca.py`,
 selects working methods, and implementation tests no longer skip stubs.
 The original October 20 notes below describe the library analysis; their
 pending-implementation sections are historical. See `implementation-spec.md`
-for current verification commands. New real-data outputs are kept separately
-in `results_ours/` and `results_ours_k4/`.
+for current verification commands. That check's real-data outputs are in
+`results_ours/` and `results_ours_k4/` on the machine that ran it. From
+November on, `make` defaults to our code and writes to `results/`; StepMix
+runs go to `results_reference/`.
 
 
 # Prior to most recent update (as of oct. 20th)

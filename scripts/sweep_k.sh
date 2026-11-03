@@ -14,14 +14,14 @@
 # step 14 calibrates the shape and stability checks by simulation (about an
 # hour), and the results figures are drawn for the chosen K.
 #
-# With BACKEND=ours the folders are results_ours/ and results_ours_k{K}/, and
-# the summary also prints how closely the from-scratch fits match the
-# reference ones.
+# The default backend is our from-scratch code. With BACKEND=reference the
+# folders are results_reference/ and results_reference_k{K}/ instead. When
+# both backends have been run, the summary prints how closely the two agree.
 #
 # Usage, from the repository root:
-#     bash scripts/sweep_k.sh                # K = 4 5 6 7, reference backend
+#     bash scripts/sweep_k.sh                # K = 4 5 6 7, our code
 #     bash scripts/sweep_k.sh 4 5            # your own list
-#     BACKEND=ours bash scripts/sweep_k.sh 4 5
+#     BACKEND=reference bash scripts/sweep_k.sh 4 5
 #
 # Progress and every step's output go to <main results folder>/sweep.log.
 # Each K folder gets a STATUS file: "complete", or the list of steps that failed.
@@ -31,12 +31,12 @@ cd "$(dirname "$0")/.."
 
 KS=("$@")
 if [ ${#KS[@]} -eq 0 ]; then KS=(4 5 6 7); fi
-BACKEND="${BACKEND:-reference}"
+BACKEND="${BACKEND:-ours}"
 STARTS="${STARTS:-20}"
 NBOOT="${NBOOT:-200}"
 PY="uv run python"
 
-if [ "$BACKEND" = "ours" ]; then MAIN="results_ours"; PREFIX="results_ours_k"; else MAIN="results"; PREFIX="results_k"; fi
+if [ "$BACKEND" = "reference" ]; then MAIN="results_reference"; PREFIX="results_reference_k"; else MAIN="results"; PREFIX="results_k"; fi
 mkdir -p "$MAIN/figures"
 LOG="$MAIN/sweep.log"
 
@@ -92,17 +92,17 @@ done
 if [ -f "$MAIN/heldout_selection.csv" ]; then REUSE=(--reuse-heldout); else REUSE=(); fi
 step "step 13, held-out likelihood and the K rule" $PY scripts/13_heldout_selection.py --results "$MAIN" --backend "$BACKEND" "${REUSE[@]}"
 step "step 14, shape of the latent space and stability under known truth" $PY scripts/14_shape_and_stability.py --results "$MAIN" --backend "$BACKEND"
-# Figure generation routes results_ours inputs to reports/figures/results_ours/
-# and reports/tables/results_ours/, preserving the reference presentation files.
+# Figure generation routes results_reference inputs to reports/figures/results_reference/
+# and reports/tables/results_reference/, so the reference run never overwrites the main figures.
 step "results figures" $PY scripts/make_results_figures.py --results "$MAIN"
 
 # 3. Summary.
 echo "=== summary" | tee -a "$LOG"
-if [ "$BACKEND" = "ours" ]; then SUMMARY_TABLE="reports/tables/results_ours/checks_by_k.csv"; else SUMMARY_TABLE="reports/tables/checks_by_k.csv"; fi
+if [ "$BACKEND" = "reference" ]; then SUMMARY_TABLE="reports/tables/results_reference/checks_by_k.csv"; else SUMMARY_TABLE="reports/tables/checks_by_k.csv"; fi
 cat "$SUMMARY_TABLE" 2>/dev/null | tee -a "$LOG"
 for K in "${KS[@]}"; do echo "$PREFIX$K: $(cat "$PREFIX$K/STATUS" 2>/dev/null)" | tee -a "$LOG"; done
-if [ "$BACKEND" = "ours" ]; then
-    PREFIX="$PREFIX" KS="${KS[*]}" $PY - <<'EOF' | tee -a "$LOG"
+if [ -d results_reference ]; then
+    KS="${KS[*]}" $PY - <<'EOF' | tee -a "$LOG"
 import os
 import numpy as np
 from nsch_subtypes.validate import adjusted_rand_index, match_classes, relabel_to_match
@@ -110,7 +110,7 @@ from nsch_subtypes.validate import adjusted_rand_index, match_classes, relabel_t
 print("agreement between the from-scratch and reference fits:")
 for k in os.environ["KS"].split():
     try:
-        a, b = np.load(f"results_k{k}/lca_k{k}.npz"), np.load(f"{os.environ['PREFIX']}{k}/lca_k{k}.npz")
+        a, b = np.load(f"results_reference_k{k}/lca_k{k}.npz"), np.load(f"results_k{k}/lca_k{k}.npz")
     except FileNotFoundError:
         print(f"  K={k}: one of the two runs is missing")
         continue

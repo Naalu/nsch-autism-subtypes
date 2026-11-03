@@ -26,7 +26,7 @@ Outputs, under ``--results``::
 
 Usage::
 
-    python scripts/10_parallel_ever.py --results results_k4 --k 4 --backend reference
+    python scripts/10_parallel_ever.py --results results_k4 --k 4
 """
 
 from __future__ import annotations

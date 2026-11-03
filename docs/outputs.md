@@ -7,44 +7,43 @@ This is the reference for anyone running, checking or changing the pipeline. It 
 | Folder | What is in it | Committed? |
 |---|---|---|
 | `data/processed/` | The analysis table (one row per child, all years) and the codebook. Every step reads these. | Yes |
-| `results/` | The **main folder**. Step 3's fits for K = 1 to 8, step 13's held-out likelihood and its choice of K. If steps 4 to 12 were run without `--k`, their outputs for that K land here too. | No |
+| `results/` | The **main folder**, written by our from-scratch code. Step 3's fits for K = 1 to 8, step 13's held-out likelihood and its choice of K. If steps 4 to 12 were run without `--k`, their outputs for that K land here too. | No |
 | `results_k{K}/` | Steps 4 to 12 and the step 6 bootstrap at one K, run by `scripts/sweep_k.sh`. Each holds a copy of that K's step 3 fit, so the folder is self-contained. | No |
-| `results_ours/`, `results_ours_k{K}/` | The same, made with the from-scratch code (`BACKEND=ours`). | No |
-| `reports/figures/results/` | Reference research figures. | Yes |
-| `reports/figures/results_ours/` | From-scratch research figures, implementation-comparison charts, and explicitly labeled verification figures. | Yes |
-| `reports/tables/` | Reference summary tables and shared backend-comparison tables. | Yes |
-| `reports/tables/results_ours/` | From-scratch research summary tables, kept separate from the reference tables. | Yes |
+| `results_reference/`, `results_reference_k{K}/` | The same, made with StepMix / SciPy / scikit-learn (`BACKEND=reference`), as the check on our code. | No |
+| `reports/figures/results/`, `reports/tables/` | The results figures and summary tables, drawn from `results/`. | Yes |
+| `reports/figures/results_reference/`, `reports/tables/results_reference/` | The same figures and tables from a reference run, if one is drawn. Kept separate so they never overwrite the main ones. | Yes |
+| `reports/figures/backend_comparison/`, `reports/tables/backend_comparison/` | Our code against StepMix: the comparison charts, plus the labeled `verification_k3_` figures and tables from the first integration check. | Yes |
 | `reports/implementation-comparison.md` | Manually maintained comparison notes; not written by the comparison script. | Yes |
 
 **The canonical numbers are in `reports/tables/`.** Those files are regenerated from the result folders by `make figures` and committed, so the numbers in the paper can always be traced to a file in the repository. The result folders are scratch space: they can be deleted and rebuilt with `make all`.
 
-The per-K folders must sit next to the main folder and be named after it (`results` and `results_k4`, or `results_ours` and `results_ours_k4`). Steps 13 and 14 and the figures script find them by that name.
+The per-K folders must sit next to the main folder and be named after it (`results` and `results_k4`, or `results_reference` and `results_reference_k4`). Steps 13 and 14 and the figures script find them by that name.
 
 ## Comparing the implementations
 
 The comparison script supplies information for report writing. It does not
 create or overwrite Markdown reports; narrative notes are maintained manually.
 
-`python scripts/compare_backends.py --k 4` reads saved fits from `results/` and
-`results_ours/`. It checks child identities and condition order, matches the
-classes, and writes:
+`python scripts/compare_backends.py --k 4` reads saved fits from `results/` (ours)
+and `results_reference/` (StepMix). It checks child identities and condition
+order, matches the classes, and writes:
 
 - `reports/tables/backend_comparison.csv`: likelihood, BIC, ARI, rate gaps, and convergence by K.
 - `reports/tables/backend_condition_rates.csv`: the matched values behind the profile diagrams.
-- `reports/figures/results_ours/backend_bic.png`: BIC overlays and differences.
-- `reports/figures/results_ours/backend_profiles.png`: matched profiles side by side.
-- `reports/figures/results_ours/backend_rate_differences.png`: signed differences in percentage points.
-- `results_ours/backend_comparison.json`: comparison metrics, the profile K, input locations, and recorded fit settings.
+- `reports/figures/backend_comparison/backend_bic.png`: BIC overlays and differences.
+- `reports/figures/backend_comparison/backend_profiles.png`: matched profiles side by side.
+- `reports/figures/backend_comparison/backend_rate_differences.png`: signed differences in percentage points.
+- `results/backend_comparison.json`: comparison metrics, the profile K, input locations, and recorded fit settings.
 
 Figures beginning `verification_k3_` came from the earlier reduced-start check;
 they are not the main K=4 research analysis. Its raw artifacts and provenance
-are archived in `results_ours/verification/`. The comparison charts use separate
+were archived in `results_ours/verification/` on the machine that ran it (the folder name before November). The comparison charts use separate
 20-start K=1..4 fits. No full bootstrap sweep is implied by these outputs.
 
-`make figures BACKEND=ours`, or
-`python scripts/make_results_figures.py --results results_ours`, writes research
-figures to `reports/figures/results_ours/` and tables to
-`reports/tables/results_ours/`. Reference destinations are unchanged.
+`make figures BACKEND=reference`, or
+`python scripts/make_results_figures.py --results results_reference`, writes
+figures to `reports/figures/results_reference/` and tables to
+`reports/tables/results_reference/`. The main destinations are unchanged.
 
 ## Fields that recur
 
@@ -167,7 +166,7 @@ On a recent laptop, with the reference backend:
 
 The sweep keeps going when a step fails, logs everything to `results/sweep.log`, and writes a `STATUS` file into each K folder. Steps 13 and 14 and the figures run at the end. To rerun only those after a sweep, use `make choose calibrate figures`.
 
-The scripts default to `--backend ours`, so that running a single script by hand exercises the from-scratch code. `make` and `scripts/sweep_k.sh` default to `reference` until the from-scratch code is in place. Pass `BACKEND=ours` to either.
+The scripts, `make` and `scripts/sweep_k.sh` all default to our from-scratch code. Pass `--backend reference` to a script, or `BACKEND=reference` to `make` or the sweep, to run the library versions into `results_reference/`.
 
 ## Adding a condition
 
