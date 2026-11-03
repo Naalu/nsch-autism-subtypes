@@ -34,7 +34,7 @@ Source: `reports/data-overview.md`, `data/processed/selection_counts.csv`, `data
 
 Source: `docs/background.md` section 3, `docs/implementation-spec.md`, draft in `methods.md`.
 
-- Latent class model, EM, implemented from scratch and checked against StepMix (numbers from StepMix until that check is done).
+- Latent class model, EM, implemented from scratch; every number comes from our code, with StepMix as the check (ARI 0.99 at K=4; `reports/implementation-comparison.md`).
 - Choice of K: BIC planned; BIC and held-out likelihood both keep improving; the stability rule (stated as post hoc).
 - Checks, each with its pass line and the reference it comes from: second method (ARI 0.65, Steinley 2004); held-out years; 2025 forward test; bootstrap (Jaccard 0.75, Hennig 2007); age bands; parallel items; count-vs-class on severity.
 - The continuous alternative: latent trait models with 1 to 4 dimensions on the same likelihood scale; pairwise residuals; simulation in both directions; held-out likelihood.
@@ -43,22 +43,22 @@ Source: `docs/background.md` section 3, `docs/implementation-spec.md`, draft in 
 ## 4. Results (3 pages)
 
 ### 4.1 How many classes
-`results/lca_bic.csv`, `reports/tables/stability_by_k.csv`, `reports/figures/results/model_fit.png`. BIC falls monotonically; shuffled baseline rises; drops shrink to 6 at K=8. Held-out likelihood also improves through K=8. Stability rule gives K=4 (least stable class 0.91 at K=4, 0.62 at K=5). Calibration: a simulated continuum is stable through K=5, so the rule finds the finest reproducible division, not groups; a real 8% class would be stable (0.87), so the fifth class's failure is not about size (`reports/figures/results/stability_vs_simulation.png`). Table: checks by K (`reports/tables/checks_by_k.csv`, `reports/figures/results/checks_by_k.png`).
+`results/lca_bic.csv`, `reports/tables/stability_by_k.csv`, `reports/figures/results/model_fit.png`. BIC falls monotonically; shuffled baseline rises; drops shrink to 6 at K=8. Held-out likelihood also improves through K=8. Stability rule gives K=4 (least stable class 0.91 at K=4, 0.63 at K=5). Calibration: a simulated continuum is stable through K=5, so the rule finds the finest reproducible division, not groups; a real 8% class would be stable (0.92 or above), so the fifth class's failure is not about size (`reports/figures/results/stability_vs_simulation.png`). Table: checks by K (`reports/tables/checks_by_k.csv`, `reports/figures/results/checks_by_k.png`).
 
 ### 4.2 The four classes are a two-by-two
 `results_k4/lca_k4.npz`, `reports/figures/results/classes.png`, `reports/tables/class_names_k4.csv`, `results_k4/shares.csv`. Profiles, weighted national shares with intervals, age and sex by class.
 
 ### 4.3 What replicates
-Held-out years 0.72, 2025 0.79 with shares (`reports/figures/results/shares_pooled_vs_2025.png`), bootstrap 0.91 to 0.93, age bands 0.70 and 0.78, "ever told" 0.66 (marginal). Second method 0.54 (0.54 to 0.57 across seeds): fails, but 0.93 among children placed with probability 0.9 or more. Method table (`reports/tables/method_comparison.csv`) and the dendrogram.
+Held-out years 0.71, 2025 0.79 with shares (`reports/figures/results/shares_pooled_vs_2025.png`), bootstrap 0.91 to 0.93, age bands 0.72 and 0.77, "ever told" 0.66 (marginal). Second method 0.54 (0.52 to 0.58 across seeds): fails, but 0.93 among children placed with probability 0.9 or more. Method table (`reports/tables/method_comparison.csv`) and the dendrogram.
 
 ### 4.4 Severity
 `results_k4/severity_by_class.csv`, `results_k4/count_vs_class.csv`, `reports/figures/results/severity_by_class.png`. About 20% severe in the two developmental classes, 2% to 4% in the other two. Count plus class beats count; class alone does not; factor scores beat count plus class. Both readings of the pre-fit wording.
 
 ### 4.5 Classes or dimensions
-`results_k4/dimensions.json`, `loadings_2d.csv`, `loadings_3d.csv`, `bivariate_residuals.csv`, `results/heldout_selection.csv`, `reports/figures/results/loadings.png`, `model_fit.png`. Two-dimensional model wins on BIC with 53 parameters and matches K=8 on held-out years; loadings split cleanly; quadrant rule ARI 0.79; third dimension is medical-sensory and cuts poorly fit pairs from 49 to 36; data simulated from the continuum reproduce the real BIC curve, data simulated from four classes do not. Shape of the latent distribution: gain over the bell curve 94 for real data, 16 to 23 for simulated continua, 177 to 242 for simulated classes (`latent_density.png`). The map (`map.png`): one cloud, classes as regions, uncertain children on the borders. Agreement by confidence (`agreement_by_confidence.png`): every check approaches 1 among confidently classified children.
+`results_k4/dimensions.json`, `loadings_2d.csv`, `loadings_3d.csv`, `bivariate_residuals.csv`, `results/heldout_selection.csv`, `reports/figures/results/loadings.png`, `model_fit.png`. Two-dimensional model wins on BIC with 53 parameters and matches K=8 on held-out years; loadings split cleanly; quadrant rule ARI 0.80; third dimension is medical-sensory and cuts poorly fit pairs from 49 to 36; data simulated from the continuum reproduce the real BIC curve, data simulated from four classes do not. Shape of the latent distribution: gain over the bell curve 94 for real data, 16 to 22 for simulated continua, 180 to 199 for simulated classes (`latent_density.png`). The map (`map.png`): one cloud, classes as regions, uncertain children on the borders. Agreement by confidence (`agreement_by_confidence.png`): every check approaches 1 among confidently classified children.
 
 ### 4.6 The K=5 sensitivity analysis
-`results_k5/`. The severe intellectual-disability-and-medical class: 9% weighted, 42% severe, Jaccard 0.62, held-out-years replication 0.646 (fails), weighted fit 0.58. The same signal as the third dimension. Exists; membership unstable.
+`results_k5/`. The severe intellectual-disability-and-medical class: 9% weighted, 45% severe, Jaccard 0.63, held-out-years replication 0.635 (fails), weighted fit 0.59. The same signal as the third dimension. Exists; membership unstable.
 
 ## 5. Discussion (1.5 pages)
 
@@ -67,7 +67,7 @@ Held-out years 0.72, 2025 0.79 with shares (`reports/figures/results/shares_pool
 - Why distance methods fail on this data (chaining, near-tied k-means optima) and what that says about cross-method replication as a criterion for sparse binary indicators.
 - The post hoc K rule, said up front. The 2025 test as confirmatory.
 - Future work: a factor mixture model, which allows classes and continuous variation within them.
-- Limitations: parent report and access to care; one observation per child, so no temporal or predictive validation; entropy 0.72; the 8.4% dropped; "currently has" wording; the proposal's hierarchical method failing; results from StepMix until the from-scratch code is verified.
+- Limitations: parent report and access to care; one observation per child, so no temporal or predictive validation; entropy 0.72; the 8.4% dropped; "currently has" wording; the proposal's hierarchical method failing.
 - What a clinician can take from it: two dials, not four boxes; severity ratings track the developmental dial.
 
 ## 6. Reproducibility (half page)

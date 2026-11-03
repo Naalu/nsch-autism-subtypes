@@ -10,7 +10,7 @@ The proposal of October 13, 2026 named the clustering method, the second method,
 
 Each child contributes a row of 18 binary flags. The latent class model (Lazarsfeld and Henry 1968; Goodman 1974) assumes K unobserved classes, each with its own probability for every flag, and conditional independence of the flags within a class. The likelihood of a child's row is the class-size-weighted sum over classes of the product of the 18 Bernoulli probabilities. We fit it by expectation-maximization (Dempster, Laird and Rubin 1977): the E-step computes each child's posterior class probabilities under the current parameters, the M-step replaces class sizes and flag probabilities with their posterior-weighted averages. Each fit used 20 random starts and kept the start with the highest log-likelihood.
 
-The results reported here were computed with StepMix 3.0 (Morin et al. 2023). We implemented the same model from scratch in NumPy as part of the course requirement and checked it against StepMix on synthetic data with planted classes and on the real data. [Agreement statement once the from-scratch results are in.] Children with any missing flag were excluded from fitting; the resulting sample is 8,891 of 9,710 for 2016 to 2024.
+We implemented the model from scratch in NumPy, and every result reported here comes from that implementation. As a check, the full pipeline was also run with StepMix 3.0 (Morin et al. 2023). On the real data the two agree closely: at K = 4 the class assignments match at ARI 0.988, the log-likelihoods differ by 0.05, and no condition rate differs by more than 0.4 percentage points; ARI is 0.978 at K = 5 and 0.966 at K = 6, and every K = 4 check reported below changes by 0.02 or less between the two. Our implementation reaches a slightly higher log-likelihood than StepMix at every K from 2 to 4. The hierarchical and k-means implementations were checked against SciPy and scikit-learn in the same way. Children with any missing flag were excluded from fitting; the resulting sample is 8,891 of 9,710 for 2016 to 2024.
 
 ## 3.3 Number of classes
 
@@ -30,7 +30,7 @@ Held-out years. One model fit on 2016 to 2021 (n = 4,575) and one on 2022 to 202
 
 2025 forward test. The frozen 2016 to 2024 model labels the 2025 children (n = 1,505) without refitting; a fresh model is fit on 2025 alone; ARI between the two labelings. Weighted 2025 class shares are reported beside the pooled shares.
 
-Bootstrap stability. 200 resamples with replacement (100 at K = 7), refit at the given K, classes matched to the original by profile. For each original class, the Jaccard overlap with the best-matching bootstrap class, computed over the distinct children present in the resample. Hennig's (2007) reading: mean Jaccard of 0.75 or above is stable, 0.5 or below has dissolved.
+Bootstrap stability. 200 resamples with replacement, refit at the given K, classes matched to the original by profile. For each original class, the Jaccard overlap with the best-matching bootstrap class, computed over the distinct children present in the resample. Hennig's (2007) reading: mean Jaccard of 0.75 or above is stable, 0.5 or below has dissolved.
 
 Age bands. Separate fits on ages 6 to 11 (n = 3,917) and 12 to 17 (n = 4,974), matched to the pooled model; ARI between the pooled model's labels and the band model's labels on the band's children.
 
@@ -58,4 +58,4 @@ Survey weights were used only to describe: class shares with design-based standa
 
 ## 3.8 Software
 
-Python 3.12; NumPy, SciPy, scikit-learn, statsmodels, StepMix 3.0. All code, the committed analysis table and codebook, locked dependency versions and continuous integration are at [repository URL]. Every step is a script with a fixed seed; `make all` reproduces the results.
+Python 3.12; NumPy (our implementations of the latent class model, average-linkage hierarchical clustering and k-means), SciPy, scikit-learn and StepMix 3.0 (the reference implementations they are checked against), and statsmodels. All code, the committed analysis table and codebook, locked dependency versions and continuous integration are at [repository URL]. Every step is a script with a fixed seed; `make all` reproduces the results.

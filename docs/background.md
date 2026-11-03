@@ -63,7 +63,7 @@ There is no formula that gives the best class sizes and profiles directly, so we
 1. E-step. Given the current profiles, work out for each child how likely each class is.
 2. M-step. Given those likelihoods, update each class's profile to be the (weighted) average of the children who probably belong to it, and update each class's size.
 
-Each round makes the model fit a little better, or at least no worse, so it eventually settles. It can settle in a mediocre place depending on the starting guess, so we run it from 20 random starts and keep the best. Writing EM from scratch is a requirement of the course, and the StepMix library is used to check our version. Until our version passes its tests (`docs/implementation-spec.md`), the numbers reported in this repository come from StepMix.
+Each round makes the model fit a little better, or at least no worse, so it eventually settles. It can settle in a mediocre place depending on the starting guess, so we run it from 20 random starts and keep the best. Writing EM from scratch is a requirement of the course. The numbers in this repository come from our version, and the StepMix library is used to check it: the two agree at ARI 0.99 (`reports/implementation-comparison.md`).
 
 ### Choosing K
 

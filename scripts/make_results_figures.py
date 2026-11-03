@@ -214,7 +214,7 @@ def draw_stability_vs_simulation(real_csv: Path, simulated_csv: Path, path: Path
     """Least stable class at each K for the real data and for simulated data with known structure."""
     real, simulated = pd.read_csv(real_csv), pd.read_csv(simulated_csv)
     fig, ax = plt.subplots(figsize=(6.4, 4))
-    ax.plot(real["k"], real["min_jaccard"], "o-", color=RUST, lw=2, label="real data (200 resamples; 100 at K=7)")
+    ax.plot(real["k"], real["min_jaccard"], "o-", color=RUST, lw=2, label="real data (200 resamples)")
     styles = [(CYAN, "s--"), (PURPLE, "^--")]
     for (name, group), (color, marker) in zip(simulated.groupby("data", sort=False), styles, strict=False):
         label = "simulated, no classes (50 resamples)" if name == "continuum" else f"simulated, {name} (50 resamples)"
