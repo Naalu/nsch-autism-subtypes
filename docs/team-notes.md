@@ -15,7 +15,7 @@ in `results_ours/` and `results_ours_k4/`.
 
 # Prior to most recent update (as of oct. 20th)
 
-## Where we ares
+## Where we are
 
 The pipeline runs end to end on the real 2016 to 2025 files with the library backend (`--backend reference`). Every check in the proposal has been run at K = 4 to 8, plus the checks added after the first results (steps 9 to 13). The findings are summarized in the README status section and argued in `docs/validation-checklist.md`; the figures are in `reports/figures/results/`.
 
