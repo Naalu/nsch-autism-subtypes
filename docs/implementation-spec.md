@@ -19,16 +19,25 @@ Ground rules:
 - Determinism: the same `seed` gives the same answer. Use `numpy.random.default_rng(seed)`.
 - Don't change the signatures or the result classes. If something in them gets in the way, change the spec first.
 
-## Running the implementations on Windows
+## Running the implementations
 
-From the repository root, the local virtual environment can be used directly
-when `uv` or `make` is unavailable:
+From the repository root, use `uv` to run the tests (this will work with every machine type - Windows, MacOS, Linx - given that ```uv``` is installed):
+
+```bash
+uv run pytest -q -m "not slow"
+uv run pytest -m slow -v
+```
+
+### Windows alternative
+
+If the dependencies are already installed in a local `.venv`, you can run its Python executable directly instead:
 
 ```powershell
 .venv/Scripts/python.exe -m pytest -q -m "not slow"
 .venv/Scripts/python.exe -m pytest -m slow -v
-.venv/Scripts/python.exe scripts/03_fit_lca.py --backend ours --results results_ours --n-starts 20 --permutation-null
+.venv/Scripts/python.exe scripts/03_fit_lca.py --backend ours --results results_ours --n-starts 20 --max-iter 2000 --permutation-null
 ```
+
 
 Step 3 also accepts `--max-iter` (default 500). In the October 31 real-data
 check, K=8 reached that limit; a separate 20-start run with `max_iter=2000`
