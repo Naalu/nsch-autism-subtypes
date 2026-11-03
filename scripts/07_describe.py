@@ -18,6 +18,7 @@ What happens here
 Outputs, under ``results/``::
 
     shares.csv              weighted share of each class with 95% CI
+    shares_by_year.csv      the same for each survey year on its own
     severity_by_class.csv   weighted severity distribution per class
     demographics.csv        age and sex per class
     count_vs_class.csv      every severity model side by side
@@ -29,6 +30,8 @@ Usage::
 """
 
 from __future__ import annotations
+
+import pandas as pd
 
 from _common import MAIN_YEARS, load_analysis, load_lca_fit, log, make_parser, resolve_k, save_json
 from nsch_subtypes.data import to_flag_matrix
@@ -52,6 +55,18 @@ def main() -> None:
     log("weighted share of US autistic children aged 6-17 in each class, averaged over 2016-24 (unweighted model, weighted description):")
     for _, row in shares.iterrows():
         log(f"  class {int(row['class'])}: {row['share']:.1%}  (95% CI {row['ci_low']:.1%} to {row['ci_high']:.1%}, n={int(row['n_modal'])})")
+
+    # The same shares one survey year at a time. The pooled model is not refit;
+    # this shows whether the mix of classes drifts across the decade, which
+    # the held-out-years check (step 5) does not ask.
+    by_year = []
+    for year in sorted(table["year"].unique()):
+        in_year = (table["year"] == year).to_numpy()
+        yearly = class_shares(table[in_year].reset_index(drop=True), fit.responsibilities[in_year], pooled_years=1)
+        yearly.insert(0, "year", int(year))
+        yearly.insert(1, "n", int(in_year.sum()))
+        by_year.append(yearly)
+    pd.concat(by_year, ignore_index=True).to_csv(args.results / "shares_by_year.csv", index=False)
 
     # ---- who is in each class ----------------------------------------------------------
     severity_by_class(table, fit.labels).to_csv(args.results / "severity_by_class.csv", index=False)

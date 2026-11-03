@@ -74,6 +74,7 @@ from nsch_subtypes.latent_trait import (  # noqa: E402
     latent_trait_pair_probabilities,
     simulate_latent_trait,
 )
+from nsch_subtypes.lca import simulate_classes  # noqa: E402
 from nsch_subtypes.plots import CLASS_COLORS, GRAY, INK, RUST, tidy  # noqa: E402
 from nsch_subtypes.validate import adjusted_rand_index, bivariate_residuals, class_model_pair_probabilities  # noqa: E402
 
@@ -86,13 +87,6 @@ def fit_trait_checked(X: np.ndarray, n_dims: int, seed: int):
     fit = fit_latent_trait(X, n_dims=n_dims, seed=seed)
     checked = dataclasses.replace(fit, n_quadrature=CHECK_GRID.get(n_dims, 11))
     return dataclasses.replace(checked, log_likelihood=latent_trait_log_likelihood(checked, X))
-
-
-def simulate_classes(class_sizes: np.ndarray, rates: np.ndarray, n: int, seed: int) -> np.ndarray:
-    """Draw ``n`` children from a latent class model: pick a class, then flip each condition's coin."""
-    rng = np.random.default_rng(seed)
-    labels = rng.choice(len(class_sizes), size=n, p=class_sizes / class_sizes.sum())
-    return (rng.random((n, rates.shape[1])) < rates[labels]).astype(np.uint8)
 
 
 def bic_gap_curve(fit_lca, X: np.ndarray, k_max: int, n_starts: int, seed: int) -> dict:

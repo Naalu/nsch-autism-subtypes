@@ -8,7 +8,7 @@ This is the reference for anyone running, checking or changing the pipeline. It 
 |---|---|---|
 | `data/processed/` | The analysis table (one row per child, all years) and the codebook. Every step reads these. | Yes |
 | `results/` | The **main folder**, written by our from-scratch code. Step 3's fits for K = 1 to 8, step 13's held-out likelihood and its choice of K. If steps 4 to 12 were run without `--k`, their outputs for that K land here too. | No |
-| `results_k{K}/` | Steps 4 to 12 and the step 6 bootstrap at one K, run by `scripts/sweep_k.sh`. Each holds a copy of that K's step 3 fit, so the folder is self-contained. | No |
+| `results_k{K}/` | Steps 4 to 12, the step 6 bootstrap and step 15 at one K, run by `scripts/sweep_k.sh`. Each holds a copy of that K's step 3 fit, so the folder is self-contained. | No |
 | `results_reference/`, `results_reference_k{K}/` | The same, made with StepMix / SciPy / scikit-learn (`BACKEND=reference`), as the check on our code. | No |
 | `reports/figures/results/`, `reports/tables/` | The results figures and summary tables, drawn from `results/`. | Yes |
 | `reports/figures/results_reference/`, `reports/tables/results_reference/` | The same figures and tables from a reference run, if one is drawn. Kept separate so they never overwrite the main ones. | Yes |
@@ -95,6 +95,7 @@ Fit on 2016-21 (model A), refit on 2022-24 (model B), compare on the 2022-24 chi
 
 | File | Contents |
 |---|---|
+| `shares_by_year.csv` | The same, one survey year at a time under the pooled model (`year`, `n`, then the `shares.csv` columns), to show whether the mix of classes drifts across the decade. |
 | `shares.csv` | Weighted share of US autistic children aged 6-17 in each class: `share`, `se`, `ci_low`, `ci_high`, `n_modal` (children assigned), `weighted_count`. |
 | `severity_by_class.csv` | Weighted share rated mild, moderate and severe in each class, each with a standard error. |
 | `demographics.csv` | Weighted mean age and share female by class. |
@@ -150,6 +151,15 @@ Fit on 2016-21 (model A), refit on 2022-24 (model B), compare on the 2022-24 chi
 | `positions_2d.npz` | One posterior draw of each child's position in the two-dimensional model (`positions`), the rotated `slopes` and `intercepts`, `flags`, and `year` and `hhid` to line the rows up with the analysis table. |
 | `shape_and_stability.json` | Settings and a summary of both checks. |
 
+### Step 15, `scripts/15_replication_calibration.py`
+
+The replication checks (held-out years, the 2025 forward test, both age bands, k-means) run on data simulated from the two-dimensional continuum and from the K-class model, with every real child's survey year and age kept so the splits are the real ones. Written into the K folder beside the real checks it is calibrating.
+
+| File | What is in it |
+|---|---|
+| `replication_calibration.csv` | One row per `data` (`continuum`, `{K} classes`, `real`), `replicate` and `check`: `ari` and `n` (children compared). The `real` rows are copied from `replicate.json`, `forward_2025.json`, `age_bands.json` and `crosscheck_kmeans.json` when those are on file. |
+| `replication_calibration.json` | The real values, the simulated minimum, median and maximum for each check, a one-line reading per check (whether the real ARI sits inside, below or above the continuum's range) and the settings. |
+
 ## Running it, and how long it takes
 
 On a recent laptop, with the reference backend:
@@ -161,7 +171,7 @@ On a recent laptop, with the reference backend:
 | `make fit` (step 3, K = 1 to 8, 20 starts) | about 5 minutes |
 | one K in the sweep, steps 4 to 12 | 10 to 15 minutes |
 | one K's bootstrap (step 6, 200 resamples) | 20 to 40 minutes |
-| `make calibrate` (step 14) | about an hour |
+| `make calibrate` (steps 14 and 15) | about an hour, plus 10 to 15 minutes for step 15 |
 | `make sweep` (K = 4 to 7) | 3 to 4 hours, mostly the bootstraps |
 
 The sweep keeps going when a step fails, logs everything to `results/sweep.log`, and writes a `STATUS` file into each K folder. Steps 13 and 14 and the figures run at the end. To rerun only those after a sweep, use `make choose calibrate figures`.

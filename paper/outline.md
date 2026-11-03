@@ -1,10 +1,12 @@
 # Paper outline
 
-Working title: Four profiles on two axes: what replicates when co-occurring conditions in a national sample of autistic children are clustered
+Working title: Two axes, not four boxes: co-occurring conditions in a national sample of autistic children replicate as a continuum
 
-Alternative: Checking autism subtypes against a national survey: what replicates and what does not
+Alternatives: Four profiles on two axes: what replicates when co-occurring conditions in a national sample of autistic children are clustered. Or: Checking autism subtypes against a national survey: what replicates and what does not
 
-The claim, in three beats: four broad profiles, the combinations of two main axes, replicate. Their borders are soft: a continuous model fits better and predicts new years as well as twice as many classes, and finer splits do not replicate. Medical and sensory conditions form a third direction that appears as a third axis or as a small unstable class.
+The claim, in three beats. First, the four profiles clinic studies report are here too, as the combinations of high and low on a developmental-language axis and a psychiatric axis, and the partition reproduces across survey years, in 2025, within age bands and under resampling. Second, a four-way partition of a smooth two-dimensional continuum does the same: run on data simulated from the fitted continuous model, with no classes in it, the same checks score the same, while data with four real classes score far higher. The continuous model also fits better and predicts new years as well as eight classes. Third, severity tracks position on the axes, not class membership. The profiles are regions of a map and a useful summary; they are not four kinds of children. Medical and sensory conditions form a third direction that appears as a third axis or as a small unstable class.
+
+Order of the results: lead with the map and the two axes (section 4.5 material), then the four profiles as its reproducible quadrants (4.1), then the checks as a single pass/fail table with the simulated ranges beside them (4.2), then severity. The reader should meet the continuum before the classes.
 
 Target length: 8 to 10 pages plus supplement, in whatever format the course asks for. Every result sentence below has a file behind it; the path is given so the draft can cite numbers without re-deriving them.
 
@@ -48,8 +50,8 @@ Source: `docs/background.md` section 3, `docs/implementation-spec.md`, draft in 
 ### 4.2 The four classes are a two-by-two
 `results_k4/lca_k4.npz`, `reports/figures/results/classes.png`, `reports/tables/class_names_k4.csv`, `results_k4/shares.csv`. Profiles, weighted national shares with intervals, age and sex by class.
 
-### 4.3 What replicates
-Held-out years 0.71, 2025 0.79 with shares (`reports/figures/results/shares_pooled_vs_2025.png`), bootstrap 0.91 to 0.93, age bands 0.72 and 0.77, "ever told" 0.66 (marginal). Second method 0.54 (0.52 to 0.58 across seeds): fails, but 0.93 among children placed with probability 0.9 or more. Method table (`reports/tables/method_comparison.csv`) and the dendrogram.
+### 4.3 What replicates, and what replication can show
+Held-out years 0.71, 2025 0.79 with shares (`reports/figures/results/shares_pooled_vs_2025.png`), bootstrap 0.91 to 0.93, age bands 0.72 and 0.77, "ever told" 0.66 (marginal). Second method 0.54 (0.52 to 0.58 across seeds): fails, but 0.93 among children placed with probability 0.9 or more. Then the calibration (`reports/tables/replication_calibration.csv`, `reports/figures/results/replication_vs_simulation.png`): the same checks on five datasets simulated from the two-dimensional model (no classes) and five from the four-class model. The real scores sit in the continuum's ranges and well below the four-class ranges on every check. Class shares by survey year (`reports/figures/results/shares_by_year.png`) stay within their intervals. Method table (`reports/tables/method_comparison.csv`) and the dendrogram.
 
 ### 4.4 Severity
 `results_k4/severity_by_class.csv`, `results_k4/count_vs_class.csv`, `reports/figures/results/severity_by_class.png`. About 20% severe in the two developmental classes, 2% to 4% in the other two. Count plus class beats count; class alone does not; factor scores beat count plus class. Both readings of the pre-fit wording.

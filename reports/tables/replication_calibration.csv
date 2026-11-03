@@ -1,0 +1,56 @@
+data,replicate,check,ari,n
+continuum,0,held-out years,0.6669999271515109,4316.0
+continuum,0,2025 forward test,0.6131272160490809,1505.0
+continuum,0,age 6-11 refit,0.8651175718386563,3917.0
+continuum,0,age 12-17 refit,0.8499096770866438,4974.0
+continuum,0,second method (k-means),0.47863814105943603,8891.0
+4 classes,0,held-out years,0.9349356941952544,4316.0
+4 classes,0,2025 forward test,0.8147195579283323,1505.0
+4 classes,0,age 6-11 refit,0.9453683903650192,3917.0
+4 classes,0,age 12-17 refit,0.9292299527208903,4974.0
+4 classes,0,second method (k-means),0.5832906599257202,8891.0
+continuum,1,held-out years,0.849007285623004,4316.0
+continuum,1,2025 forward test,0.7630318293983888,1505.0
+continuum,1,age 6-11 refit,0.894010803784656,3917.0
+continuum,1,age 12-17 refit,0.9064577367595427,4974.0
+continuum,1,second method (k-means),0.540764541401492,8891.0
+4 classes,1,held-out years,0.943397160356666,4316.0
+4 classes,1,2025 forward test,0.813314732264426,1505.0
+4 classes,1,age 6-11 refit,0.9623492649978558,3917.0
+4 classes,1,age 12-17 refit,0.9350356065036043,4974.0
+4 classes,1,second method (k-means),0.5862536382673093,8891.0
+continuum,2,held-out years,0.7658749915596912,4316.0
+continuum,2,2025 forward test,0.7176376369759381,1505.0
+continuum,2,age 6-11 refit,0.803567317316343,3917.0
+continuum,2,age 12-17 refit,0.9271288441876911,4974.0
+continuum,2,second method (k-means),0.44788638497971844,8891.0
+4 classes,2,held-out years,0.9277115352960178,4316.0
+4 classes,2,2025 forward test,0.8880720303191745,1505.0
+4 classes,2,age 6-11 refit,0.9515761639906494,3917.0
+4 classes,2,age 12-17 refit,0.9652459766026277,4974.0
+4 classes,2,second method (k-means),0.5663417468034649,8891.0
+continuum,3,held-out years,0.7526976795613689,4316.0
+continuum,3,2025 forward test,0.5622722446018792,1505.0
+continuum,3,age 6-11 refit,0.9484125409631319,3917.0
+continuum,3,age 12-17 refit,0.8564160647928735,4974.0
+continuum,3,second method (k-means),0.46093204131213955,8891.0
+4 classes,3,held-out years,0.7848715357264467,4316.0
+4 classes,3,2025 forward test,0.905479293107003,1505.0
+4 classes,3,age 6-11 refit,0.9671229288246233,3917.0
+4 classes,3,age 12-17 refit,0.9763841533328057,4974.0
+4 classes,3,second method (k-means),0.6015296994480129,8891.0
+continuum,4,held-out years,0.6643023969756147,4316.0
+continuum,4,2025 forward test,0.7749919251661782,1505.0
+continuum,4,age 6-11 refit,0.5554309748109625,3917.0
+continuum,4,age 12-17 refit,0.9515428485453055,4974.0
+continuum,4,second method (k-means),0.44086793379369227,8891.0
+4 classes,4,held-out years,0.9515567915241047,4316.0
+4 classes,4,2025 forward test,0.8723569710525475,1505.0
+4 classes,4,age 6-11 refit,0.9526562358116732,3917.0
+4 classes,4,age 12-17 refit,0.9354125444409227,4974.0
+4 classes,4,second method (k-means),0.5892581315797863,8891.0
+real,0,held-out years,0.7089665871682167,
+real,0,2025 forward test,0.791674146038655,
+real,0,age 6-11 refit,0.7147164607546624,
+real,0,age 12-17 refit,0.7738201927548052,
+real,0,second method (k-means),0.5410819327849609,

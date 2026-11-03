@@ -16,11 +16,13 @@ the parent folder)::
     severity_by_class.png        weighted severity distribution per class
     loadings.png                 slopes in the two-dimensional latent trait model
     shares_pooled_vs_2025.png    class shares, 2016-24 average and 2025
+    shares_by_year.png           class shares in each survey year under the pooled model
     checks_by_k.png              every agreement and stability check against K, with intervals
     model_fit.png                in-sample BIC and held-out likelihood against number of parameters
     map.png                      children in the two-dimensional space, with condition directions and classes
     latent_density.png           estimated distribution of positions: real data against simulated continuum and classes
     stability_vs_simulation.png  least stable class at each K, real data against simulated continuum and classes
+    replication_vs_simulation.png each replication check's real ARI against its range on simulated continuum and class data
     agreement_by_confidence.png  each check's ARI as children near a class boundary are set aside
     tables/class_names_k{K}.csv, tables/checks_by_k.csv, tables/method_comparison.csv
 
@@ -225,6 +227,41 @@ def draw_stability_vs_simulation(real_csv: Path, simulated_csv: Path, path: Path
     plt.close(fig)
 
 
+def draw_replication_vs_simulation(calibration_csv: Path, path: Path) -> None:
+    """Each replication check's real ARI against the range the same check produces on simulated continuum and class data."""
+    table = pd.read_csv(calibration_csv)
+    checks = [c for c in table["check"].unique()]
+    simulated = table[table["data"] != "real"]
+    real = table[table["data"] == "real"].set_index("check")["ari"]
+    kinds = list(simulated["data"].unique())
+    colors = {kinds[0]: CYAN} if kinds else {}
+    if len(kinds) > 1:
+        colors[kinds[1]] = PURPLE
+    fig, ax = plt.subplots(figsize=(6.8, 3.9))
+    y = np.arange(len(checks))
+    offsets = np.linspace(-0.18, 0.18, max(len(kinds), 1))
+    for kind, offset in zip(kinds, offsets, strict=False):
+        group = simulated[simulated["data"] == kind]
+        lo = group.groupby("check")["ari"].min().reindex(checks)
+        hi = group.groupby("check")["ari"].max().reindex(checks)
+        ax.hlines(y + offset, lo, hi, color=colors[kind], lw=5, alpha=0.55, label=f"simulated, {'no classes' if kind == 'continuum' else kind}")
+    present = [c for c in checks if c in real.index]
+    ax.plot(real.reindex(present).to_numpy(), [checks.index(c) for c in present], "o", color=RUST, ms=7, label="real data", zorder=3)
+    ax.axvline(ARI_PASS, color=INK, lw=1, ls=":")
+    ax.text(ARI_PASS, -0.55, f" pass line {ARI_PASS}", fontsize=7, va="bottom")
+    ax.set_yticks(y)
+    ax.set_yticklabels(checks)
+    ax.set_ylim(len(checks) - 0.5, -0.8)
+    ax.set_xlim(0, 1.02)
+    ax.set_xlabel("adjusted Rand index")
+    ax.legend(frameon=False, fontsize=7.5, ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.18))
+    ax.set_title("Replication checks on the real data and on data with known structure", fontsize=9, loc="left")
+    tidy(ax)
+    fig.tight_layout()
+    fig.savefig(path, dpi=170)
+    plt.close(fig)
+
+
 def draw_agreement_by_confidence(kdir: Path, path: Path) -> None:
     """Each check's ARI as children with lower class probability are set aside, against the share of children kept."""
     series = []
@@ -386,6 +423,26 @@ def main() -> None:
         fig.savefig(out_dir / "shares_pooled_vs_2025.png", dpi=170)
         plt.close(fig)
 
+    # ---- 4b. shares by survey year ------------------------------------------------------------------
+    by_year_path = kdir / "shares_by_year.csv"
+    if by_year_path.exists():
+        by_year = pd.read_csv(by_year_path)
+        fig, ax = plt.subplots(figsize=(6.8, 3.4))
+        for rank, c in enumerate(order):
+            d = by_year[by_year["class"] == c].sort_values("year")
+            color = CLASS_COLORS[rank % len(CLASS_COLORS)]
+            ax.plot(d["year"], d["share"], "o-", color=color, lw=1.6, ms=4, label=label_of[c])
+            ax.fill_between(d["year"], d["ci_low"], d["ci_high"], color=color, alpha=0.12, lw=0)
+        ax.set_xticks(sorted(by_year["year"].unique()))
+        ax.set_ylim(0, max(0.5, float(by_year["ci_high"].max()) + 0.02))
+        ax.set_ylabel("weighted share, with 95% CI")
+        ax.legend(frameon=False, fontsize=7.5, ncol=4, loc="upper center", bbox_to_anchor=(0.5, -0.12))
+        ax.set_title(f"Class shares by survey year under the pooled K={k} model", fontsize=9, loc="left")
+        tidy(ax)
+        fig.tight_layout()
+        fig.savefig(out_dir / "shares_by_year.png", dpi=170)
+        plt.close(fig)
+
     # ---- 5. checks by K -------------------------------------------------------------------------------
     checks = checks_table(main_dir)
     checks.round(3).to_csv(tables_dir / "checks_by_k.csv")
@@ -464,10 +521,14 @@ def main() -> None:
     if (main_dir / "stability_calibration.csv").exists() and (main_dir / "stability_by_k.csv").exists():
         draw_stability_vs_simulation(main_dir / "stability_by_k.csv", main_dir / "stability_calibration.csv", out_dir / "stability_vs_simulation.png")
     draw_agreement_by_confidence(kdir, out_dir / "agreement_by_confidence.png")
+    if (kdir / "replication_calibration.csv").exists():
+        draw_replication_vs_simulation(kdir / "replication_calibration.csv", out_dir / "replication_vs_simulation.png")
 
     # ---- 8. tables carried over from the steps ------------------------------------------------------------
     for source in (
         kdir / "method_comparison.csv",
+        kdir / "replication_calibration.csv",
+        kdir / "shares_by_year.csv",
         main_dir / "stability_by_k.csv",
         main_dir / "k_rule_sensitivity.csv",
         main_dir / "heldout_selection.csv",
