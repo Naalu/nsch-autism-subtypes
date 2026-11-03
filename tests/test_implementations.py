@@ -243,3 +243,13 @@ def test_scratch_objectives_improve_with_more_iterations():
         inertias.append(partition.inertia)
     assert np.all(np.diff(likelihoods) >= -1e-8)
     assert np.all(np.diff(inertias) <= 1e-8)
+
+
+def test_scipy_reference_returns_exactly_k_clusters_when_merge_heights_tie():
+    # With few 0/1 items many pairs share the same Jaccard distance, so merge
+    # heights tie. fcluster(..., "maxclust") then returns fewer clusters than
+    # asked; cut_tree does not. The reference backend must give exactly K.
+    X = np.random.default_rng(3).integers(0, 2, size=(200, 5))
+    for k in (3, 4, 6):
+        labels = reference.cluster_scipy(X, k).labels
+        assert len(np.unique(labels)) == k, f"asked for {k} clusters"

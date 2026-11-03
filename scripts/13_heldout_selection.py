@@ -54,7 +54,8 @@ Outputs, under ``--results``::
 
     heldout_selection.csv            every model, both held-out sets
     stability_by_k.csv               least and mean class Jaccard at each K with a bootstrap
-    model_choice.json                chosen K, the rule, and the held-out summary
+    k_rule_sensitivity.csv           the K the rule picks at other thresholds and resample counts
+    model_choice.json                chosen K, the rule, the most stable K, and the held-out summary
     figures/heldout_selection.png
 
 Usage::
@@ -155,6 +156,49 @@ def stability_table(results_dir) -> pd.DataFrame:
     return pd.DataFrame(rows).drop_duplicates("k").sort_values("k").reset_index(drop=True)
 
 
+SENSITIVITY_THRESHOLDS = (0.6, 0.7, JACCARD_STABLE, 0.8)
+SENSITIVITY_RESAMPLES = (50, 100, 200)
+
+
+def rule_sensitivity(results_dir) -> pd.DataFrame:
+    """The K the rule picks under other thresholds and with fewer resamples, from the saved per-resample Jaccard arrays.
+
+    One row per (threshold, number of resamples): the K values whose every
+    class clears the threshold, the largest of them (our rule), and the K
+    with the highest least-stable class (the Ben-Hur and Lange reading, which
+    picks the most stable K rather than the finest acceptable one). Uses the
+    first ``n`` resamples of each ``stability_jaccard.npy`` so the rows are
+    nested rather than independent draws. Empty when no arrays are on file.
+    """
+    arrays = {}
+    for folder in [results_dir, *sorted(results_dir.parent.glob(f"{results_dir.name}_k*"))]:
+        path = folder / "stability_jaccard.npy"
+        if path.exists():
+            jaccard = np.load(path)
+            arrays.setdefault(jaccard.shape[0], jaccard)
+    if not arrays:
+        return pd.DataFrame()
+    rows = []
+    for n in SENSITIVITY_RESAMPLES:
+        available = {k: a[:, :n] for k, a in arrays.items() if a.shape[1] >= n}
+        if not available:
+            continue
+        least = {k: float(a.mean(axis=1).min()) for k, a in available.items()}
+        for threshold in SENSITIVITY_THRESHOLDS:
+            passing = sorted(k for k, value in least.items() if value >= threshold)
+            rows.append(
+                {
+                    "threshold": threshold,
+                    "n_resamples": n,
+                    "k_tested": " ".join(str(k) for k in sorted(least)),
+                    "k_passing": " ".join(str(k) for k in passing),
+                    "chosen_k_largest_passing": max(passing) if passing else None,
+                    "k_most_stable": max(least, key=least.get),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
 def heldout_summary(table: pd.DataFrame) -> dict:
     out = {}
     for split in SPLITS:
@@ -232,6 +276,10 @@ def main() -> None:
     log(stability.round(3).to_string(index=False))
     if untested:
         log(f"warning: no bootstrap on file for K = {untested}; the rule can only be applied to the K that were tested")
+    sensitivity = rule_sensitivity(args.results)
+    if not sensitivity.empty:
+        sensitivity.to_csv(args.results / "k_rule_sensitivity.csv", index=False)
+        log("rule sensitivity:\n" + sensitivity.to_string(index=False))
 
     save_json(
         {
@@ -239,6 +287,7 @@ def main() -> None:
             "rule": f"largest K at which every class has mean bootstrap Jaccard >= {JACCARD_STABLE}",
             "k_with_bootstrap": stability["k"].tolist(),
             "k_untested_above_choice": untested,
+            "k_most_stable": int(stability.loc[stability["min_jaccard"].idxmax(), "k"]),
             "heldout": summary,
             "backend": args.backend,
         },

@@ -157,7 +157,7 @@ This answers "how much structure is there, and which kind of model captures it m
 
 - ARI (adjusted Rand index): agreement between two clusterings of the same items, 0 for chance and 1 for identical.
 - Bivariate residual: for one pair of conditions, how far the observed number of children with both is from what a model predicts. Values above 3.84 flag a pair the model fits poorly.
-- BIC: a model score that rewards fit and penalizes parameters; used to choose the number of classes. Lower is better.
+- BIC: a model score that rewards fit and penalizes parameters. Lower is better. It is the usual way to choose the number of classes; on this data it keeps falling, so we report it and choose K by stability instead (see "Choosing K").
 - Bootstrap: resampling the data with replacement to see how much a result depends on the particular sample.
 - Class / cluster: a group of children found by a method. "Class" is the latent class word; "cluster" is the general word.
 - Co-occurring condition: another diagnosis an autistic child has (ADHD, anxiety, epilepsy, and so on). Also called a comorbidity.

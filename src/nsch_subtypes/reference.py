@@ -13,11 +13,11 @@ If you are reading the code to learn the methods, read ``lca.py``,
 from __future__ import annotations
 
 import numpy as np
-from scipy.cluster.hierarchy import fcluster, linkage
+from scipy.cluster.hierarchy import cut_tree, linkage
 from scipy.spatial.distance import pdist
 
 from .hierarchical import HierarchicalResult
-from .lca import LCAResult
+from .lca import MAX_ITER, LCAResult
 from .partition import PartitionResult
 
 
@@ -27,7 +27,7 @@ def fit_lca_stepmix(
     n_starts: int = 20,
     seed: int = 0,
     tol: float = 1e-6,
-    max_iter: int = 500,
+    max_iter: int = MAX_ITER,
 ) -> LCAResult:
     """Fit a latent class model with the StepMix package. Same arguments as :func:`nsch_subtypes.lca.fit_lca`."""
     from stepmix import StepMix
@@ -83,8 +83,10 @@ def cluster_scipy(X: np.ndarray, n_clusters: int, weights: np.ndarray | None = N
     pairwise = np.nan_to_num(pairwise, nan=0.0)
 
     merges = linkage(pairwise, method="average")
-    # fcluster numbers clusters from 1; we use 0-based labels everywhere.
-    labels = fcluster(merges, t=n_clusters, criterion="maxclust") - 1
+    # cut_tree always returns exactly n_clusters groups. fcluster with the
+    # "maxclust" criterion returns fewer when merge heights tie, which happens
+    # on binary data (many pairs share the same Jaccard distance).
+    labels = cut_tree(merges, n_clusters=n_clusters).ravel().astype(int)
     return HierarchicalResult(labels=labels, merges=merges)
 
 

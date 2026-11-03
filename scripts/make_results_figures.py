@@ -119,13 +119,6 @@ def checks_table(main: Path) -> pd.DataFrame:
         stability = folder / "stability.csv"
         row["least stable class (Jaccard)"] = pd.read_csv(stability)["mean_jaccard"].min() if stability.exists() else None
         rows.append(row)
-    # K=8 lives in the main results folder (steps 4 to 8 at BIC's minimum).
-    if (main / "stability.csv").exists() and 8 not in [r["K"] for r in rows]:
-        row = {"K": 8, "least stable class (Jaccard)": pd.read_csv(main / "stability.csv")["mean_jaccard"].min()}
-        row["second method (k-means)"] = load_json(main / "crosscheck_kmeans.json").get("ari")
-        row["held-out years"] = load_json(main / "replicate.json").get("ari")
-        row["2025 forward test"] = load_json(main / "forward_2025.json").get("ari")
-        rows.append(row)
     return pd.DataFrame(rows).sort_values("K").set_index("K").astype(float)
 
 
@@ -476,6 +469,7 @@ def main() -> None:
     for source in (
         kdir / "method_comparison.csv",
         main_dir / "stability_by_k.csv",
+        main_dir / "k_rule_sensitivity.csv",
         main_dir / "heldout_selection.csv",
         main_dir / "latent_density.csv",
         main_dir / "stability_calibration.csv",

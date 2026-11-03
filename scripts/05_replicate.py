@@ -8,7 +8,7 @@ samples.
 What happens here
 -----------------
 1. Fit model A on the 2016-2021 children and model B on the 2022-2024
-   children, both at the K chosen in step 3.
+   children, both at the K chosen in step 13 (or given with --k).
 2. Label the 2022-2024 children twice: once with model A (a model that never
    saw them) and once with model B (fit on them).
 3. Match B's classes to A's by profile and score the agreement between the

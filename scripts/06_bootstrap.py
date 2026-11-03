@@ -84,6 +84,7 @@ def main() -> None:
     )
     summary.to_csv(args.results / "stability.csv", index=False)
     np.save(args.results / "stability_jaccard.npy", stability.jaccard)
+    (args.results / "figures").mkdir(parents=True, exist_ok=True)
     stability_plot(stability.mean, args.results / "figures" / "stability.png")
     log(summary.to_string(index=False))
 

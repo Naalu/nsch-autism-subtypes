@@ -11,11 +11,10 @@ comparing profiles; their original numbers are arbitrary.
 - Settings: reference: 20 starts, seed 0, max 2000 iterations, ours: 20 starts, seed 0, max 2000 iterations.
 - All compared fits converged.
 
-The saved fits were in `results/` (reference) and `results_ours/` (ours) when this comparison was run. Since November our code writes to `results/` and StepMix to `results_reference/`, and `scripts/compare_backends.py` reads those by default. [The summary
+Our code writes to `results/` and StepMix to `results_reference/`; `scripts/compare_backends.py` reads
+those by default and refuses fits with different children, row order or condition order. [The summary
 table](tables/backend_comparison.csv) contains every shared K; [the condition-rate
 table](tables/backend_condition_rates.csv) contains the matched chart values.
-`results_ours/backend_comparison.json` records input locations and settings. The comparison script
-refuses fits with different children, row order, or condition order.
 
 ## What the comparison found
 
@@ -49,31 +48,8 @@ probabilities, rather than raw within-class percentages.
 Positive values mean a higher rate in ours; negative values mean a higher rate in the reference. The
 units are percentage points, and the color scale is centered at zero.
 
-## Verification and limits
+## What the numbers in the repository come from
 
-The initial verification of the added-from-scratch copy passed all 54 unit tests, before this report and
-its comparison tests were added. Targeted real-data checks also completed both LCA backends, weighted
-hierarchical clustering, k-means, replication, and a small bootstrap. The copy's executable Python code
-matched the previously verified version, whose two full pipeline smoke tests passed. The full slow suite
-was not repeated on this copy.
-
-Two existing test-file style issues remain: import spacing in `tests/test_implementations.py` and an
-overlong line in `tests/test_pipeline_smoke.py`. They affect lint, not the passing unit tests. The full
-200-resample, multi-K research sweep has not been rerun. Reduced-start verification runs are separate
-from the fits compared above and must not be quoted as final research estimates.
-
-## Earlier small verification run
-
-The diagrams below use K=3 from the initial integration check. The LCA fit
-used three starts. The bootstrap used just three resamples and two starts
-per refit. These settings check that the program runs; they do not provide
-final research estimates of class stability.
-
-![Weighted hierarchical tree, verification run at K=3](figures/backend_comparison/verification_k3_dendrogram.png)
-
-![Bootstrap Jaccard, three verification resamples only](figures/backend_comparison/verification_k3_stability.png)
-
-[The verification stability table](tables/backend_comparison/verification_k3_stability.csv)
-contains the plotted values. The original check record and raw artifacts are
-archived under `results_ours/verification/`. All `verification_k3_` figures and
-tables come from that earlier run, separate from the 20-start comparison.
+Every number in the README, the validation checklist and the paper comes from the from-scratch code
+(`results/` and `results_k*/`). The StepMix fits in `results_reference/` are the check on it; rerunning
+`make compare` after a sweep refreshes this report's tables and figures for every K both backends fit.
