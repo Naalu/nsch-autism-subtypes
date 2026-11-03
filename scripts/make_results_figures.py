@@ -20,6 +20,9 @@ the parent folder)::
     checks_by_k.png              every agreement and stability check against K, with intervals
     model_fit.png                in-sample BIC and held-out likelihood against number of parameters
     map.png                      children in the two-dimensional space, with condition directions and classes
+    figure1_map.png              the paper's Figure 1: one cloud on the two named axes, classes as regions, cut lines
+    severity_map.png             share rated severe in each region of the map
+    checks_k{K}.png              every agreement check at the chosen K with intervals and simulated ranges
     latent_density.png           estimated distribution of positions: real data against simulated continuum and classes
     stability_vs_simulation.png  least stable class at each K, real data against simulated continuum and classes
     replication_vs_simulation.png each replication check's real ARI against its range on simulated continuum and class data
@@ -53,6 +56,38 @@ from nsch_subtypes.validate import ARI_PASS, JACCARD_STABLE  # noqa: E402
 
 DEVELOPMENTAL = ["dev_delay", "learning", "speech", "intellectual"]
 PSYCHIATRIC = ["anxiety", "adhd", "depression", "behavior"]
+
+# One color per axis and per class, used by every figure. The developmental-
+# language axis is blue and the psychiatric axis purple; a class high on one
+# takes that axis's color, the class high on both takes rust, and the class
+# low on both gray. Names outside the two-by-two (other K) fall back to the
+# general palette in class order.
+AXIS_COLORS = {"developmental-language": CYAN, "psychiatric": PURPLE}
+NAME_COLORS = {
+    "fewer co-occurring conditions": "#8a8f9e",
+    "developmental-language": CYAN,
+    "psychiatric": PURPLE,
+    "developmental and psychiatric": RUST,
+}
+SEVERITY_COLORS = {"mild": "#f6c89f", "moderate": RUST, "severe": "#5a2a0e"}
+
+
+def class_colors(order: list[int], label_of: dict) -> dict:
+    """Class index -> color: the name's color when the name is one of the four, otherwise the general palette."""
+    colors, spare = {}, iter(c for c in CLASS_COLORS if c not in NAME_COLORS.values())
+    for c in order:
+        colors[c] = NAME_COLORS.get(label_of[c]) or next(spare, GRAY)
+    return colors
+
+
+def axis_roles(slopes: np.ndarray, flags: list[str]) -> list[str]:
+    """Which axis each dimension is: the marker group with the larger mean absolute slope on it."""
+    roles = []
+    for d in range(slopes.shape[1]):
+        dev = np.abs(slopes[[flags.index(f) for f in DEVELOPMENTAL], d]).mean()
+        psych = np.abs(slopes[[flags.index(f) for f in PSYCHIATRIC], d]).mean()
+        roles.append("developmental-language" if dev > psych else "psychiatric")
+    return roles
 
 
 def name_classes(rates: pd.DataFrame) -> pd.DataFrame:
@@ -124,22 +159,42 @@ def checks_table(main: Path) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values("K").set_index("K").astype(float)
 
 
+SHORT_LABELS = {
+    "adhd": "ADHD",
+    "anxiety": "anxiety",
+    "depression": "depression",
+    "behavior": "behavior problems",
+    "dev_delay": "developmental delay",
+    "intellectual": "intellectual disability",
+    "speech": "speech or language",
+    "learning": "learning disability",
+}
+
+
 def axis_names(slopes: np.ndarray, flags: list[str]) -> list[str]:
-    """Label each latent dimension by the three conditions with the steepest slopes on it."""
+    """Label each latent dimension by its role and the three marker conditions with the steepest slopes on it."""
     names = []
-    for d in range(slopes.shape[1]):
-        top = np.argsort(-np.abs(slopes[:, d]))[:3]
-        names.append(f"dimension {d + 1} ({', '.join(flags[j] for j in top)})")
+    for d, role in enumerate(axis_roles(slopes, flags)):
+        markers = DEVELOPMENTAL if role == "developmental-language" else PSYCHIATRIC
+        top = sorted(markers, key=lambda f: -abs(slopes[flags.index(f), d]))[:3]
+        names.append(f"{role} axis ({', '.join(SHORT_LABELS.get(f, f) for f in top)})")
     return names
 
 
-def draw_map(positions_path: Path, table: pd.DataFrame, fit, order: list[int], label_of: dict, path: Path) -> None:
-    """Children in the two-dimensional space: density with condition directions, and the same children colored by class."""
+def _load_positions(positions_path: Path, table: pd.DataFrame):
     archive = np.load(positions_path)
     if not (np.array_equal(archive["hhid"], table["hhid"].to_numpy()) and np.array_equal(archive["year"], table["year"].to_numpy())):
         log(f"{positions_path} does not match the analysis table; rerun step 14. Skipping the map.")
+        return None
+    return archive["positions"], archive["slopes"], archive["flags"].tolist()
+
+
+def draw_map(positions_path: Path, table: pd.DataFrame, fit, order: list[int], label_of: dict, colors: dict, path: Path) -> None:
+    """Children in the two-dimensional space: density with condition directions, and the same children colored by class."""
+    loaded = _load_positions(positions_path, table)
+    if loaded is None:
         return
-    xy, slopes, flags = archive["positions"], archive["slopes"], archive["flags"].tolist()
+    xy, slopes, flags = loaded
     names = axis_names(slopes, flags)
     labels, confidence = fit.labels, fit.responsibilities.max(axis=1)
     fig, axes = plt.subplots(1, 2, figsize=(12, 5.6), sharex=True, sharey=True)
@@ -147,18 +202,19 @@ def draw_map(positions_path: Path, table: pd.DataFrame, fit, order: list[int], l
     ax = axes[0]
     ax.hexbin(xy[:, 0], xy[:, 1], gridsize=38, extent=(-3.5, 3.5, -3.5, 3.5), cmap="Greys", mincnt=1, linewidths=0)
     scale = 2.8 / np.linalg.norm(slopes, axis=1).max()
-    for condition in DEVELOPMENTAL + PSYCHIATRIC:  # the marker conditions used to name the classes
-        end = slopes[flags.index(condition)] * scale
-        ax.annotate("", xy=end, xytext=(0, 0), arrowprops={"arrowstyle": "->", "color": RUST, "lw": 1.2})
-        ax.text(*(end + 0.18 * end / np.linalg.norm(end)), condition, fontsize=7.5, color=RUST, ha="center", va="center")
+    for group, color in ((DEVELOPMENTAL, AXIS_COLORS["developmental-language"]), (PSYCHIATRIC, AXIS_COLORS["psychiatric"])):
+        for condition in group:  # the marker conditions used to name the classes
+            end = slopes[flags.index(condition)] * scale
+            ax.annotate("", xy=end, xytext=(0, 0), arrowprops={"arrowstyle": "->", "color": color, "lw": 1.2})
+            ax.text(*(end + 0.18 * end / np.linalg.norm(end)), condition, fontsize=7.5, color=color, ha="center", va="center")
     ax.set_title("Children (one posterior draw each) and\nthe direction of each marker condition", fontsize=8.5, loc="left")
 
     ax = axes[1]
     unsure = confidence < 0.7
     ax.scatter(xy[unsure, 0], xy[unsure, 1], s=3, color="#c9ccd6", lw=0, label="largest class probability < 0.7")
-    for rank, c in enumerate(order):
+    for c in order:
         member = (labels == c) & ~unsure
-        ax.scatter(xy[member, 0], xy[member, 1], s=3, color=CLASS_COLORS[rank % len(CLASS_COLORS)], lw=0, alpha=0.6, label=label_of[c])
+        ax.scatter(xy[member, 0], xy[member, 1], s=3, color=colors[c], lw=0, alpha=0.6, label=label_of[c])
     ax.legend(frameon=False, fontsize=7, markerscale=3, loc="lower left")
     ax.set_title(f"The same children by most likely class (K={len(order)});\ngray: no class above 0.7", fontsize=8.5, loc="left")
     for ax in axes:
@@ -168,6 +224,173 @@ def draw_map(positions_path: Path, table: pd.DataFrame, fit, order: list[int], l
         ax.set_aspect("equal")
         tidy(ax)
     axes[0].set_ylabel(names[1], fontsize=8)
+    fig.tight_layout()
+    fig.savefig(path, dpi=170)
+    plt.close(fig)
+
+
+def draw_figure1(
+    positions_path: Path, table: pd.DataFrame, fit, order: list[int], label_of: dict, colors: dict, shares: pd.DataFrame, cut_points, path: Path
+) -> None:
+    """Figure 1: one cloud of children on the two axes, the classes as its regions, uncertain children faded.
+
+    The developmental-language axis goes across and the psychiatric axis up,
+    whichever order the trait model returned them in. ``cut_points`` (from
+    step 12, on posterior-mean scores) are drawn as the two lines that best
+    split the classes into quadrants.
+    """
+    loaded = _load_positions(positions_path, table)
+    if loaded is None:
+        return
+    xy, slopes, flags = loaded
+    roles = axis_roles(slopes, flags)
+    if roles == ["psychiatric", "developmental-language"]:
+        xy, slopes = xy[:, ::-1], slopes[:, ::-1]
+        cut_points = None if cut_points is None else np.asarray(cut_points)[::-1]
+    names = axis_names(slopes, flags)
+    labels, confidence = fit.labels, fit.responsibilities.max(axis=1)
+    sure = confidence >= 0.8
+    fig, ax = plt.subplots(figsize=(6.6, 6.2))
+    for c in order:
+        member = labels == c
+        ax.scatter(xy[member & ~sure, 0], xy[member & ~sure, 1], s=3, color=colors[c], lw=0, alpha=0.18)
+        ax.scatter(xy[member & sure, 0], xy[member & sure, 1], s=3, color=colors[c], lw=0, alpha=0.65)
+    if cut_points is not None:
+        ax.axvline(cut_points[0], color=INK, lw=0.8, ls="--")
+        ax.axhline(cut_points[1], color=INK, lw=0.8, ls="--")
+    # Label each class in the corner of the quadrant its confident members sit in.
+    centre = np.zeros(2) if cut_points is None else np.asarray(cut_points, dtype=float)
+    for c in order:
+        member = (labels == c) & sure
+        if member.sum() == 0:
+            continue
+        side = np.sign(np.median(xy[member], axis=0) - centre)
+        x, y = 3.35 * side[0], 3.35 * side[1]
+        ax.text(
+            x,
+            y,
+            f"{label_of[c]}\n{shares.loc[c, 'share']:.0%}",
+            fontsize=8.5,
+            color=colors[c],
+            fontweight="bold",
+            ha="right" if side[0] > 0 else "left",
+            va="top" if side[1] > 0 else "bottom",
+        )
+    ax.set_xlim(-3.5, 3.5)
+    ax.set_ylim(-3.5, 3.5)
+    ax.set_aspect("equal")
+    ax.set_xlabel(names[0], fontsize=8.5, color=AXIS_COLORS.get(axis_roles(slopes, flags)[0], INK))
+    ax.set_ylabel(names[1], fontsize=8.5, color=AXIS_COLORS.get(axis_roles(slopes, flags)[1], INK))
+    ax.set_title(
+        f"{len(xy):,} autistic children aged 6-17 (NSCH 2016-24) on the two axes of the latent trait model.\n"
+        "Color: most likely class (weighted share of US children); faded: probability below 0.8.\nDashed: the two cuts that best match the classes.",
+        fontsize=7.5,
+        loc="left",
+    )
+    tidy(ax)
+    fig.tight_layout()
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+
+
+def draw_severity_map(positions_path: Path, table: pd.DataFrame, path: Path) -> None:
+    """Share of children rated severe in each region of the map: severity follows position, not a class border."""
+    loaded = _load_positions(positions_path, table)
+    if loaded is None:
+        return
+    xy, slopes, flags = loaded
+    roles = axis_roles(slopes, flags)
+    if roles == ["psychiatric", "developmental-language"]:
+        xy, slopes = xy[:, ::-1], slopes[:, ::-1]
+    names = axis_names(slopes, flags)
+    rated = table["severity"].notna().to_numpy()
+    severe = (table["severity"] == "severe").to_numpy().astype(float)
+    fig, ax = plt.subplots(figsize=(6.6, 5.6))
+    image = ax.hexbin(
+        xy[rated, 0],
+        xy[rated, 1],
+        C=severe[rated],
+        reduce_C_function=np.mean,
+        gridsize=16,
+        extent=(-3.5, 3.5, -3.5, 3.5),
+        mincnt=15,
+        cmap="Oranges",
+        vmin=0,
+        vmax=0.5,
+        linewidths=0.2,
+        edgecolors="white",
+    )
+    fig.colorbar(image, ax=ax, fraction=0.04, pad=0.02, label="share rated severe (cells with 15 or more children)")
+    ax.set_xlim(-3.5, 3.5)
+    ax.set_ylim(-3.5, 3.5)
+    ax.set_aspect("equal")
+    ax.set_xlabel(names[0], fontsize=8.5)
+    ax.set_ylabel(names[1], fontsize=8.5)
+    ax.set_title(f"Parent-rated severity across the map ({rated.sum():,} children with a rating)", fontsize=8.5, loc="left")
+    tidy(ax)
+    fig.tight_layout()
+    fig.savefig(path, dpi=170)
+    plt.close(fig)
+
+
+def draw_checks_dot_plot(kdir: Path, k: int, path: Path) -> None:
+    """Every check at the chosen K on one axis: the real value with its interval, and the simulated ranges where step 15 ran."""
+    rows = []
+    km = load_json(kdir / "crosscheck_kmeans.json")
+    if km:
+        rows.append(("second method (k-means)", km.get("ari"), None, None))
+    for name, file in (("held-out years", "replicate.json"), ("2025 forward test", "forward_2025.json"), ("'ever told' items", "parallel_ever.json")):
+        d = load_json(kdir / file)
+        if d:
+            rows.append((name, d.get("ari", d.get("ari_current_vs_ever")), d.get("ci_low"), d.get("ci_high")))
+    bands = load_json(kdir / "age_bands.json").get("bands", {})
+    for band, label in (("6_11", "age 6-11 refit"), ("12_17", "age 12-17 refit")):
+        if band in bands:
+            b = bands[band]
+            rows.append((label, b.get("ari"), b.get("ci_low"), b.get("ci_high")))
+    robust = load_json(kdir / "robustness.json")
+    if robust.get("weighted_fit"):
+        w = robust["weighted_fit"]
+        rows.append(("survey-weighted fit", w.get("ari_vs_unweighted"), *(w.get("ari_interval") or [None, None])))
+    if robust.get("missing_as_missing"):
+        m = robust["missing_as_missing"]
+        rows.append(("children with blanks kept", m.get("ari_vs_complete_case"), *(m.get("ari_interval") or [None, None])))
+    rows = [r for r in rows if r[1] is not None]
+    if not rows:
+        return
+    simulated = pd.read_csv(kdir / "replication_calibration.csv") if (kdir / "replication_calibration.csv").exists() else None
+    stability = kdir / "stability.csv"
+    fig, ax = plt.subplots(figsize=(6.8, 0.42 * len(rows) + 1.6))
+    y = np.arange(len(rows))
+    for i, (name, value, low, high) in enumerate(rows):
+        if simulated is not None and name in set(simulated["check"]):
+            for kind, color, offset in (("continuum", CYAN, -0.22), (f"{k} classes", PURPLE, 0.22)):
+                g = simulated[(simulated["data"] == kind) & (simulated["check"] == name)]["ari"]
+                if len(g):
+                    ax.hlines(i + offset, g.min(), g.max(), color=color, lw=4, alpha=0.5)
+        if low is not None and high is not None:
+            ax.hlines(i, low, high, color=RUST, lw=1.4)
+        ax.plot(value, i, "o", color=RUST, ms=6, zorder=3)
+        ax.text(1.0, i, f"{value:.2f}", fontsize=7.5, va="center", ha="left")
+    ax.axvline(ARI_PASS, color=INK, lw=1, ls=":")
+    ax.set_yticks(y)
+    ax.set_yticklabels([r[0] for r in rows], fontsize=8)
+    ax.set_ylim(len(rows) - 0.5, -0.6)
+    ax.set_xlim(0, 1.06)
+    ax.set_xlabel("adjusted Rand index against the main classes (95% interval)")
+    handles = [plt.Line2D([], [], marker="o", color=RUST, ls="-", label="real data")]
+    if simulated is not None:
+        handles += [
+            plt.Line2D([], [], color=CYAN, lw=4, alpha=0.5, label="simulated, no classes"),
+            plt.Line2D([], [], color=PURPLE, lw=4, alpha=0.5, label=f"simulated, {k} classes"),
+        ]
+    handles.append(plt.Line2D([], [], color=INK, ls=":", label=f"pass line {ARI_PASS}"))
+    ax.legend(handles=handles, frameon=False, fontsize=7, ncol=4, loc="upper center", bbox_to_anchor=(0.5, -0.16))
+    title = f"Every agreement check at K={k}"
+    if stability.exists():
+        title += f"; least stable class under resampling: Jaccard {pd.read_csv(stability)['mean_jaccard'].min():.2f}"
+    ax.set_title(title, fontsize=8.5, loc="left")
+    tidy(ax)
     fig.tight_layout()
     fig.savefig(path, dpi=170)
     plt.close(fig)
@@ -335,6 +558,10 @@ def main() -> None:
     label_of = dict(zip(names["class"], names["name"], strict=True))
     log("class names:\n" + names.to_string(index=False))
     order = list(names.sort_values(["dev_marker_rate", "psych_marker_rate"]).index)
+    canonical = list(NAME_COLORS)  # low on both, developmental, psychiatric, high on both
+    if all(label_of[c] in canonical for c in order):
+        order = sorted(order, key=lambda c: canonical.index(label_of[c]))
+    colors = class_colors(order, label_of)
 
     # ---- 1. condition rates by class ----------------------------------------------------------------
     fig, ax = plt.subplots(figsize=(0.5 * len(flags) + 2.8, 0.55 * k + 1.9))
@@ -344,6 +571,8 @@ def main() -> None:
     ax.set_xticklabels(flags, rotation=60, ha="right", fontsize=8)
     ax.set_yticks(range(k))
     ax.set_yticklabels([f"{label_of[c]}\n{shares.loc[c, 'share']:.0%} (weighted)" for c in order], fontsize=8)
+    for tick, c in zip(ax.get_yticklabels(), order, strict=True):
+        tick.set_color(colors[c])
     for i in range(k):
         for j in range(len(flags)):
             ax.text(j, i, f"{data[i, j]:.2f}", ha="center", va="center", fontsize=6.5, color="white" if data[i, j] > 0.55 else INK)
@@ -363,17 +592,23 @@ def main() -> None:
 
     # ---- 2. severity by class ----------------------------------------------------------------------
     severity = pd.read_csv(kdir / "severity_by_class.csv").set_index("class").loc[order]
+    rated = table["severity"].notna().to_numpy()
+    n_rated = {c: int(((fit.labels == c) & rated).sum()) for c in order}
     fig, ax = plt.subplots(figsize=(7, 0.55 * k + 1.4))
     left = np.zeros(k)
-    for level, color in (("mild", "#f6c89f"), ("moderate", RUST), ("severe", "#5a2a0e")):
+    for level, color in SEVERITY_COLORS.items():
         values = severity[level].to_numpy()
         ax.barh(range(k), values, left=left, color=color, label=level)
         for i, (v, start) in enumerate(zip(values, left, strict=True)):
-            if v > 0.06:
-                ax.text(start + v / 2, i, f"{v:.0%}", ha="center", va="center", fontsize=8, color="white" if level != "mild" else INK)
+            if 0 < v < 0.03 and level == "severe":  # too thin to hold its label: put it just past the bar
+                ax.text(1.005, i, f"{v:.0%}", ha="left", va="center", fontsize=6.5, color=INK)
+            if v >= 0.03:  # every segment wide enough to hold a label gets one
+                ax.text(start + v / 2, i, f"{v:.0%}", ha="center", va="center", fontsize=7.5 if v >= 0.06 else 6.5, color="white" if level != "mild" else INK)
         left += values
     ax.set_yticks(range(k))
-    ax.set_yticklabels([label_of[c] for c in order], fontsize=8)
+    ax.set_yticklabels([f"{label_of[c]}\n(n = {n_rated[c]:,})" for c in order], fontsize=8)
+    for tick, c in zip(ax.get_yticklabels(), order, strict=True):
+        tick.set_color(colors[c])
     ax.invert_yaxis()
     ax.set_xlim(0, 1)
     ax.set_xlabel("weighted share of class")
@@ -388,16 +623,30 @@ def main() -> None:
     loadings_path = kdir / "loadings_2d.csv"
     if loadings_path.exists():
         loadings = pd.read_csv(loadings_path).sort_values("dim1_slope")
+        roles = axis_roles(loadings[["dim1_slope", "dim2_slope"]].to_numpy(), loadings["condition"].tolist())
         fig, ax = plt.subplots(figsize=(6.5, 5))
         y = np.arange(len(loadings))
-        ax.barh(y - 0.2, loadings["dim1_slope"], height=0.4, color=CYAN, label="dimension 1")
-        ax.barh(y + 0.2, loadings["dim2_slope"], height=0.4, color=PURPLE, label="dimension 2")
+        for d, offset in ((1, -0.2), (2, 0.2)):
+            role = roles[d - 1]
+            se = loadings.get(f"dim{d}_se")
+            ax.barh(
+                y + offset,
+                loadings[f"dim{d}_slope"],
+                height=0.4,
+                color=AXIS_COLORS[role],
+                label=f"{role} axis",
+                xerr=None if se is None else 1.96 * se,
+                error_kw={"lw": 0.8, "ecolor": INK, "capsize": 1.5},
+            )
         ax.set_yticks(y)
         ax.set_yticklabels(loadings["condition"], fontsize=8)
         ax.axvline(0, color=INK, lw=0.8)
-        ax.set_xlabel("slope (how strongly the condition depends on each dimension)")
-        ax.legend(frameon=False, fontsize=8, loc="lower right")
-        ax.set_title("Slopes in the two-dimensional latent trait model, after varimax rotation", fontsize=9, loc="left")
+        ax.set_xlabel("slope (how strongly the condition depends on each axis)")
+        ax.legend(frameon=False, fontsize=8, ncol=2, loc="upper center", bbox_to_anchor=(0.5, -0.1))
+        title = "Slopes in the two-dimensional latent trait model, after varimax rotation"
+        if "dim1_se" in loadings:
+            title += "\n(bars: 95% bootstrap intervals)"
+        ax.set_title(title, fontsize=9, loc="left")
         tidy(ax)
         fig.tight_layout()
         fig.savefig(out_dir / "loadings.png", dpi=170)
@@ -415,6 +664,8 @@ def main() -> None:
             ax.errorbar(xs + offset, d["share"], yerr=[d["share"] - d["ci_low"], d["ci_high"] - d["share"]], fmt="none", ecolor=INK, capsize=3, lw=1)
         ax.set_xticks(xs)
         ax.set_xticklabels([label_of[c].replace(" and ", "\nand ").replace(" co-occurring", "\nco-occurring") for c in order], fontsize=8)
+        for tick, c in zip(ax.get_xticklabels(), order, strict=True):
+            tick.set_color(colors[c])
         ax.set_ylabel("weighted share, with 95% CI")
         ax.legend(frameon=False, fontsize=8)
         ax.set_title(f"Class shares among US autistic children aged 6-17, K={k}", fontsize=9, loc="left")
@@ -428,9 +679,9 @@ def main() -> None:
     if by_year_path.exists():
         by_year = pd.read_csv(by_year_path)
         fig, ax = plt.subplots(figsize=(6.8, 3.4))
-        for rank, c in enumerate(order):
+        for c in order:
             d = by_year[by_year["class"] == c].sort_values("year")
-            color = CLASS_COLORS[rank % len(CLASS_COLORS)]
+            color = colors[c]
             ax.plot(d["year"], d["share"], "o-", color=color, lw=1.6, ms=4, label=label_of[c])
             ax.fill_between(d["year"], d["ci_low"], d["ci_high"], color=color, alpha=0.12, lw=0)
         ax.set_xticks(sorted(by_year["year"].unique()))
@@ -532,12 +783,16 @@ def main() -> None:
 
     # ---- 7. the two-dimensional picture and the simulations (step 14) ---------------------------------
     if (main_dir / "positions_2d.npz").exists():
-        draw_map(main_dir / "positions_2d.npz", table, fit, order, label_of, out_dir / "map.png")
+        draw_map(main_dir / "positions_2d.npz", table, fit, order, label_of, colors, out_dir / "map.png")
+        cut_points = load_json(kdir / "dimensions.json").get("quadrants", {}).get("cut_points")
+        draw_figure1(main_dir / "positions_2d.npz", table, fit, order, label_of, colors, shares, cut_points, out_dir / "figure1_map.png")
+        draw_severity_map(main_dir / "positions_2d.npz", table, out_dir / "severity_map.png")
     if (main_dir / "latent_density.npz").exists():
         draw_latent_density(main_dir / "latent_density.npz", main_dir / "latent_density.csv", main_dir / "positions_2d.npz", out_dir / "latent_density.png")
     if (main_dir / "stability_calibration.csv").exists() and (main_dir / "stability_by_k.csv").exists():
         draw_stability_vs_simulation(main_dir / "stability_by_k.csv", main_dir / "stability_calibration.csv", out_dir / "stability_vs_simulation.png")
     draw_agreement_by_confidence(kdir, out_dir / "agreement_by_confidence.png")
+    draw_checks_dot_plot(kdir, k, out_dir / f"checks_k{k}.png")
     if (kdir / "replication_calibration.csv").exists():
         draw_replication_vs_simulation(kdir / "replication_calibration.csv", out_dir / "replication_vs_simulation.png")
 
