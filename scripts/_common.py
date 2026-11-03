@@ -21,7 +21,8 @@ REPO = Path(__file__).resolve().parents[1]
 RAW_DIR = REPO / "data" / "raw"  # Census files as downloaded, one folder per year (not committed)
 INTERIM_DIR = REPO / "data" / "interim"  # selected rows per year, raw column names (not committed)
 PROCESSED_DIR = REPO / "data" / "processed"  # the analysis table and codebook (committed)
-RESULTS_DIR = REPO / "results"  # model fits, check results, figures (not committed)
+RESULTS_DIR = REPO / "results"  # model fits, check results, figures from the from-scratch code (not committed)
+REFERENCE_RESULTS_DIR = REPO / "results_reference"  # the same, from the StepMix / SciPy / scikit-learn backend
 
 ANALYSIS_PATH = PROCESSED_DIR / "analysis.parquet"
 CODEBOOK_PATH = PROCESSED_DIR / "codebook.csv"
@@ -46,6 +47,20 @@ def parse_years(text: str) -> list[int]:
     return years
 
 
+class _Parser(argparse.ArgumentParser):
+    """ArgumentParser whose ``--results`` default depends on ``--backend``.
+
+    Without this, ``--backend reference`` with no ``--results`` would write
+    into ``results/`` on top of the from-scratch run.
+    """
+
+    def parse_args(self, *args, **kwargs):  # type: ignore[override]
+        parsed = super().parse_args(*args, **kwargs)
+        if getattr(parsed, "results", None) is None:
+            parsed.results = REFERENCE_RESULTS_DIR if getattr(parsed, "backend", "ours") == "reference" else RESULTS_DIR
+        return parsed
+
+
 def make_parser(description: str, backend: bool = True) -> argparse.ArgumentParser:
     """An argument parser with the flags every script shares.
 
@@ -53,8 +68,13 @@ def make_parser(description: str, backend: bool = True) -> argparse.ArgumentPars
     ``--backend`` (when the script clusters anything) picks the from-scratch
     code or the library versions.
     """
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("--results", type=Path, default=RESULTS_DIR, help="directory for outputs")
+    parser = _Parser(description=description)
+    parser.add_argument(
+        "--results",
+        type=Path,
+        default=None,
+        help="directory for outputs (default: results/ for --backend ours, results_reference/ for --backend reference)",
+    )
     parser.add_argument("--seed", type=int, default=0, help="random seed, so runs can be repeated")
     if backend:
         parser.add_argument(
@@ -203,27 +223,21 @@ def save_json(obj: dict, path: Path) -> None:
 # Picking the clustering code
 # ---------------------------------------------------------------------------- #
 def backend_or_exit(name: str, *methods: str) -> dict:
-    """Return the backend's functions, after checking that the requested methods are implemented.
+    """Return the backend's functions (``{"lca": ..., "hierarchical": ..., "kmeans": ...}``).
 
-    With ``--backend ours``, a method that is still a stub would otherwise fail
-    deep inside a script with a traceback. This probes each one on a tiny
-    matrix first and exits with a readable message instead.
+    ``methods`` names the ones the calling script uses; an unknown name or
+    backend stops the script with a readable message instead of a KeyError
+    later on.
     """
     from nsch_subtypes.backends import get_backend
 
-    backend = get_backend(name)
-    if name == "ours":
-        tiny_matrix = np.array([[0, 1], [1, 0], [1, 1], [0, 0]], dtype=np.uint8)
-        for method in methods:
-            try:
-                if method in ("lca", "kmeans"):
-                    backend[method](tiny_matrix, 1, n_starts=1)
-                else:
-                    backend[method](tiny_matrix, 1)
-            except NotImplementedError:
-                sys.exit(f"The from-scratch {method} is not in place yet. Run with --backend reference, or see docs/implementation-spec.md.")
-            except Exception:
-                pass  # any other error is for the real run to surface
+    try:
+        backend = get_backend(name)
+    except ValueError as error:
+        sys.exit(str(error))
+    missing = [method for method in methods if method not in backend]
+    if missing:
+        sys.exit(f"Backend {name!r} has no implementation of: {', '.join(missing)}")
     return backend
 
 

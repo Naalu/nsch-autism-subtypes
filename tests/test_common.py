@@ -65,3 +65,22 @@ def test_loading_a_fit_against_different_children_stops(tmp_path):
         load_lca_fit(tmp_path, 2, table, ["adhd", "anxiety"])  # a condition was added since the fit
     with pytest.raises(SystemExit):
         load_lca_fit(tmp_path, 3)  # no K=3 file
+
+
+def test_results_default_follows_the_backend():
+    from _common import REFERENCE_RESULTS_DIR, RESULTS_DIR, make_parser
+
+    assert make_parser("x").parse_args([]).results == RESULTS_DIR
+    assert make_parser("x").parse_args(["--backend", "reference"]).results == REFERENCE_RESULTS_DIR
+    assert make_parser("x").parse_args(["--backend", "reference", "--results", "elsewhere"]).results.name == "elsewhere"
+    assert make_parser("x", backend=False).parse_args([]).results == RESULTS_DIR
+
+
+def test_backend_or_exit_names_a_missing_method():
+    from _common import backend_or_exit
+
+    assert set(backend_or_exit("ours", "lca", "kmeans")) == {"lca", "hierarchical", "kmeans"}
+    with pytest.raises(SystemExit, match="no_such_method"):
+        backend_or_exit("ours", "no_such_method")
+    with pytest.raises(SystemExit, match="Unknown backend"):
+        backend_or_exit("nope", "lca")
