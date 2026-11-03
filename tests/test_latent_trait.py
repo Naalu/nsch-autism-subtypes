@@ -111,3 +111,19 @@ def test_drawn_positions_track_the_true_positions():
     assert draws.shape == (2000, 3, 2)
     assert np.corrcoef(draws[:, 0, 0], theta[:, 0])[0, 1] > 0.6
     assert abs(draws[..., 0].std() - 1) < 0.15, "draws keep the population spread"
+
+
+def test_a_dimension_collapsing_onto_one_item_stops_at_the_bound_and_is_flagged():
+    # Item 0 is a near-copy of a binary split that nothing else depends on:
+    # with two dimensions, the second has only item 0 to explain and its
+    # slope runs away unless bounded.
+    from nsch_subtypes.latent_trait import fit_latent_trait
+
+    rng = np.random.default_rng(0)
+    theta = rng.standard_normal(3000)
+    X = (rng.random((3000, 6)) < 1 / (1 + np.exp(-1.5 * theta[:, None]))).astype(np.uint8)
+    X[:, 0] = rng.random(3000) < 0.5
+    fit = fit_latent_trait(X, n_dims=2, seed=0, max_slope=3.0)
+    assert np.abs(fit.unrotated_slopes).max() <= 3.0 + 1e-9
+    free = fit_latent_trait(X[:, 1:], n_dims=1, seed=0, max_slope=3.0)
+    assert not free.at_bound, "a well-identified one-dimensional model stays inside the bound"

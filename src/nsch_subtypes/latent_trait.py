@@ -47,6 +47,12 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.polynomial.hermite_e import hermegauss
 
+# Bound on any one slope. A slope of 10 means the item's log-odds change by 10
+# per standard deviation on that dimension: the item is all but determined by
+# the dimension. Larger values only arise when a dimension collapses onto one
+# item (a Heywood case).
+MAX_SLOPE = 10.0
+
 
 @dataclass
 class LatentTraitResult:
@@ -73,6 +79,8 @@ class LatentTraitResult:
         fitted (unrotated) slopes. Defaults to the identity (no rotation).
     n_quadrature : int
         Grid points per dimension used in the fit.
+    max_slope : float
+        The bound placed on every unrotated slope during fitting.
     """
 
     n_dims: int
@@ -84,6 +92,7 @@ class LatentTraitResult:
     converged: bool
     rotation: np.ndarray | None = None
     n_quadrature: int = 15
+    max_slope: float = np.inf
 
     def __post_init__(self) -> None:
         if self.rotation is None:
@@ -102,6 +111,16 @@ class LatentTraitResult:
     @property
     def unrotated_slopes(self) -> np.ndarray:
         return self.slopes @ self.rotation.T
+
+    @property
+    def at_bound(self) -> bool:
+        """True if any slope ended on the bound: a Heywood case, where one dimension has collapsed onto a single item.
+
+        The likelihood of such a fit is not trustworthy (it depends on the bound
+        and on the quadrature grid), so the model should not be compared with
+        the others or interpreted.
+        """
+        return bool(np.isfinite(self.max_slope) and (np.abs(self.unrotated_slopes) >= self.max_slope - 1e-3).any())
 
 
 def _quadrature_grid(n_dims: int, n_points: int) -> tuple[np.ndarray, np.ndarray]:
@@ -144,7 +163,7 @@ def _e_step(X: np.ndarray, counts: np.ndarray, slopes: np.ndarray, intercepts: n
     return float((counts * row_log_lik).sum()), posterior, row_log_lik
 
 
-def _polish(distinct, counts, slopes, intercepts, nodes, prior, design, gtol: float = 1e-3):
+def _polish(distinct, counts, slopes, intercepts, nodes, prior, design, gtol: float = 1e-3, max_slope: float = np.inf):
     """Finish the fit with L-BFGS on the marginal log-likelihood. Returns (slopes, intercepts, converged)."""
     from scipy.optimize import minimize
 
@@ -161,9 +180,15 @@ def _polish(distinct, counts, slopes, intercepts, nodes, prior, design, gtol: fl
         return -ll, -gradient.ravel()
 
     start = np.column_stack([slopes, intercepts]).ravel()
-    result = minimize(objective, start, jac=True, method="L-BFGS-B", options={"maxiter": 5000, "gtol": gtol})
+    slope_bound = (-max_slope, max_slope) if np.isfinite(max_slope) else (None, None)
+    bounds = [slope_bound] * n_dims + [(None, None)]  # per item: D slopes, then the intercept
+    result = minimize(objective, start, jac=True, method="L-BFGS-B", bounds=bounds * n_items, options={"maxiter": 5000, "gtol": gtol})
     beta = result.x.reshape(n_items, n_dims + 1)
-    gradient_norm = float(np.abs(objective(result.x)[1]).max())
+    gradient = objective(result.x)[1].reshape(n_items, n_dims + 1)
+    # A coordinate pinned at its bound has a nonzero gradient by construction; judge convergence on the free ones.
+    free = np.ones_like(beta, dtype=bool)
+    free[:, :n_dims] = np.abs(beta[:, :n_dims]) < max_slope - 1e-6
+    gradient_norm = float(np.abs(gradient[free]).max()) if free.any() else 0.0
     return beta[:, :n_dims].copy(), beta[:, n_dims].copy(), bool(result.success or gradient_norm < gtol)
 
 
@@ -174,6 +199,7 @@ def fit_latent_trait(
     max_iter: int = 500,
     tol: float = 1e-6,
     seed: int = 0,
+    max_slope: float = MAX_SLOPE,
 ) -> LatentTraitResult:
     """Fit a ``n_dims``-dimensional two-parameter logistic model to a 0/1 matrix by EM.
 
@@ -190,6 +216,11 @@ def fit_latent_trait(
         ``converged`` on the result reports whether the final optimizer
         reached a point where the gradient is essentially zero.
     seed : for the random starting slopes.
+    max_slope : bound on every unrotated slope. On these data the
+        four-dimensional model otherwise drives one slope past 40 (one
+        dimension collapses onto ADHD alone); the bound keeps the fit finite
+        and ``at_bound`` on the result flags it. Slopes in the models we
+        interpret stay below 4.
     """
     if n_quadrature is None:
         n_quadrature = {1: 21, 2: 15, 3: 11}.get(n_dims, 7)
@@ -231,6 +262,7 @@ def fit_latent_trait(
                 beta += step
                 if np.abs(step).max() < 1e-7:
                     break
+            beta[:n_dims] = np.clip(beta[:n_dims], -max_slope, max_slope)
             slopes[j], intercepts[j] = beta[:n_dims], beta[n_dims]
 
     # EM for this model crawls near the optimum (the likelihood can still be
@@ -239,7 +271,7 @@ def fit_latent_trait(
     # from the same posterior the E-step computes (Fisher's identity), so it
     # is exact and cheap.
     if not converged:
-        slopes, intercepts, converged = _polish(distinct, counts, slopes, intercepts, nodes, prior, design)
+        slopes, intercepts, converged = _polish(distinct, counts, slopes, intercepts, nodes, prior, design, max_slope=max_slope)
 
     # Likelihood and posterior at the parameters actually returned.
     log_likelihood, posterior, _ = _e_step(distinct, counts, slopes, intercepts, nodes, prior)
@@ -260,6 +292,7 @@ def fit_latent_trait(
         converged=converged,
         rotation=rotation,
         n_quadrature=n_quadrature,
+        max_slope=max_slope,
     )
 
 
