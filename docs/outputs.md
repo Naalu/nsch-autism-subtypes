@@ -118,7 +118,7 @@ Fit on 2016-21 (model A), refit on 2022-24 (model B), compare on the 2022-24 chi
 
 | File | Contents |
 |---|---|
-| `robustness.json` | `weighted_fit` (survey-weighted refit against the main fit), `dropped_vs_kept` (children dropped for a missing answer against those kept), `seed_sensitivity` (`vs_main`, `pairwise`, `min_pairwise_ari` across seeds). |
+| `robustness.json` | `weighted_fit` (survey-weighted refit against the main fit), `dropped_vs_kept` (children dropped for a missing answer against those kept), `missing_as_missing` (a refit on every child with blank answers left out of the likelihood, against the complete-case labels; `--backend ours` only), `seed_sensitivity` (`vs_main`, `pairwise`, `min_pairwise_ari` across seeds). |
 | `profiles_weighted_k{K}.csv` | The weighted fit's profiles. |
 | `dropped_vs_kept.csv` | The comparison of dropped and kept children as a table. |
 
