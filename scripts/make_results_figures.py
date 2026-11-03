@@ -237,7 +237,7 @@ def draw_replication_vs_simulation(calibration_csv: Path, path: Path) -> None:
     colors = {kinds[0]: CYAN} if kinds else {}
     if len(kinds) > 1:
         colors[kinds[1]] = PURPLE
-    fig, ax = plt.subplots(figsize=(6.8, 3.6))
+    fig, ax = plt.subplots(figsize=(6.8, 3.9))
     y = np.arange(len(checks))
     offsets = np.linspace(-0.18, 0.18, max(len(kinds), 1))
     for kind, offset in zip(kinds, offsets, strict=False):
@@ -248,13 +248,13 @@ def draw_replication_vs_simulation(calibration_csv: Path, path: Path) -> None:
     present = [c for c in checks if c in real.index]
     ax.plot(real.reindex(present).to_numpy(), [checks.index(c) for c in present], "o", color=RUST, ms=7, label="real data", zorder=3)
     ax.axvline(ARI_PASS, color=INK, lw=1, ls=":")
-    ax.text(ARI_PASS, len(checks) - 0.45, f" pass line {ARI_PASS}", fontsize=7, va="top")
+    ax.text(ARI_PASS, -0.55, f" pass line {ARI_PASS}", fontsize=7, va="bottom")
     ax.set_yticks(y)
     ax.set_yticklabels(checks)
-    ax.invert_yaxis()
+    ax.set_ylim(len(checks) - 0.5, -0.8)
     ax.set_xlim(0, 1.02)
     ax.set_xlabel("adjusted Rand index")
-    ax.legend(frameon=False, fontsize=7.5, loc="lower left")
+    ax.legend(frameon=False, fontsize=7.5, ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.18))
     ax.set_title("Replication checks on the real data and on data with known structure", fontsize=9, loc="left")
     tidy(ax)
     fig.tight_layout()
@@ -528,6 +528,7 @@ def main() -> None:
     for source in (
         kdir / "method_comparison.csv",
         kdir / "replication_calibration.csv",
+        kdir / "shares_by_year.csv",
         main_dir / "stability_by_k.csv",
         main_dir / "k_rule_sensitivity.csv",
         main_dir / "heldout_selection.csv",

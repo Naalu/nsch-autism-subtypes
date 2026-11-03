@@ -4,7 +4,7 @@ Draft for section 3. Numbers in brackets are placeholders to fill from the files
 
 ## 3.1 Design
 
-The proposal of October 13, 2026 named the clustering method, the second method, the pass line for every check and the planned null test, before any model was fit. The 2025 survey file had been released on October 5. It was processed and summarized with the other years, but no model was fit to it and no modeling choice used it until the forward test (section 3.4). Three decisions were made after seeing results and are marked as such below: the rule for choosing the number of classes, the switch of the second method from hierarchical clustering to k-means, and the comparison against continuous models.
+The proposal of October 13, 2026 named the clustering method, the second method, the pass line for every check and the planned null test, before any model was fit. The 2025 survey file had been released on October 5. It was processed and summarized with the other years, but no model was fit to it and no modeling choice used it until the forward test (section 3.4). Four decisions were made after seeing results and are marked as such below: the rule for choosing the number of classes, the switch of the second method from hierarchical clustering to k-means, the comparison against continuous models, and the calibration of every check by simulation.
 
 ## 3.2 The latent class model
 
@@ -37,6 +37,8 @@ Age bands. Separate fits on ages 6 to 11 (n = 3,917) and 12 to 17 (n = 4,974), m
 Parallel items. Flags rebuilt from the "ever told" items in place of the "currently has" items, refit at the chosen K, ARI against the main labels.
 
 Robustness. Refit with survey weights as frequency weights (ARI against the unweighted fit); comparison of excluded and included children on age, sex, severity and reported conditions; refits from five further seeds (pairwise ARI).
+
+Calibration of the checks. A partition that reproduces in new children is not thereby a set of groups: a smooth distribution cut into K pieces also reproduces, to a degree the checks above do not reveal on their own. We therefore ran the held-out-years, 2025, age-band and k-means checks, with the same settings, on five datasets simulated from the fitted two-dimensional latent trait model (section 3.6), which contains no classes, and on five simulated from the fitted K = 4 class model, keeping each real child's survey year and age so that the splits are the real splits. The ranges of ARI from the two kinds of simulated data are reported beside the real values, and the real values are read against them. This was added after the first results.
 
 ## 3.5 The planned null test
 

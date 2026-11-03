@@ -196,7 +196,8 @@ def main() -> None:
         if value is None or "continuum" not in ranges:
             continue
         lo, hi = ranges["continuum"][check]["min"], ranges["continuum"][check]["max"]
-        where = "inside" if lo <= value <= hi else ("below" if value < lo else "above")
+        v, lo3, hi3 = (round(x, 3) for x in (value, lo, hi))  # compare at the precision the tables report
+        where = "inside" if lo3 <= v <= hi3 else ("below" if v < lo3 else "above")
         reading.append(f"{check}: real {value:.3f} is {where} the continuum's range {lo:.3f} to {hi:.3f}")
     for line in reading:
         log("   " + line)
