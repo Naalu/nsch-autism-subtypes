@@ -229,13 +229,16 @@ def main() -> None:
     log(f"ARI, classes vs two-cut quadrant rule: {out['quadrants']['ari_class_vs_quadrant']:.3f}")
 
     # ---- 5. simulation in both directions -----------------------------------------------------
-    log(f"simulation: {args.sim_replicates} replicates per direction, K up to {args.sim_k_max}")
-    real = bic_gap_curve(fit_lca, X, args.sim_k_max, args.n_starts, args.seed)
+    # Fit at least up to the K being checked: data simulated from a K-class
+    # model can only show BIC turning up at K if K is among the fits.
+    sim_k_max = max(args.sim_k_max, k)
+    log(f"simulation: {args.sim_replicates} replicates per direction, K up to {sim_k_max}")
+    real = bic_gap_curve(fit_lca, X, sim_k_max, args.n_starts, args.seed)
     from_continuum, from_classes = [], []
     for r in range(args.sim_replicates):
-        from_continuum.append(bic_gap_curve(fit_lca, simulate_latent_trait(traits[2], n, seed=100 + r), args.sim_k_max, args.n_starts, args.seed))
+        from_continuum.append(bic_gap_curve(fit_lca, simulate_latent_trait(traits[2], n, seed=100 + r), sim_k_max, args.n_starts, args.seed))
         from_classes.append(
-            bic_gap_curve(fit_lca, simulate_classes(lca.class_sizes, lca.condition_rates, n, seed=200 + r), args.sim_k_max, args.n_starts, args.seed)
+            bic_gap_curve(fit_lca, simulate_classes(lca.class_sizes, lca.condition_rates, n, seed=200 + r), sim_k_max, args.n_starts, args.seed)
         )
         log(f"   replicate {r + 1}: continuum gap at K={k} {from_continuum[-1]['gap'][k - 1]:.0f}; classes gap at K={k} {from_classes[-1]['gap'][k - 1]:.0f}")
     out["simulation"] = {
@@ -246,7 +249,7 @@ def main() -> None:
     }
 
     fig, axes = plt.subplots(1, 2, figsize=(9.5, 3.5), sharey=True)
-    ks = np.arange(1, args.sim_k_max + 1)
+    ks = np.arange(1, sim_k_max + 1)
     for ax, sims, title in (
         (axes[0], from_continuum, "simulated from the 2-D continuum (no groups)"),
         (axes[1], from_classes, f"simulated from the K={k} class model (no continuum)"),
