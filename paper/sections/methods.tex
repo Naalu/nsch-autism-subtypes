@@ -1,0 +1,48 @@
+\section{Methods}
+\label{sec:methods}
+
+\subsection{Design}
+The proposal presented on October 13, 2026 named the clustering method, the second method, the pass line for every check and the planned null test before any model was fit; the repository's first commit (October 18) contains them. Four decisions were made after seeing results and are marked as such below: the rule for choosing the number of classes, the switch of the second method from hierarchical clustering to $k$-means, the comparison against continuous models, and the calibration of every check by simulation.
+
+\subsection{Latent class model}
+\label{sec:lca}
+\begin{stub}{Haley, about 0.4 column}
+The model in one equation: $P(\mathbf{x}_i)=\sum_{k=1}^{K}\pi_k\prod_{j=1}^{18}\theta_{kj}^{x_{ij}}(1-\theta_{kj})^{1-x_{ij}}$, with class sizes $\pi_k$, flag probabilities $\theta_{kj}$ and conditional independence within a class \citep{lazarsfeld1968,goodman1974}. EM \citep{dempster1977}: the E-step gives each child's posterior class probabilities, the M-step sets $\pi_k$ and $\theta_{kj}$ to posterior-weighted averages; log-sum-exp in the E-step; 20 random starts, best log-likelihood kept; at most 2,000 iterations; stopping rule. Missing flags: skipped in the likelihood and in each rate's denominator (used only for the robustness refit). Our NumPy code is the source of every number; StepMix 3.0 \citep{morin2025} is the check: at $K=4$, ARI 0.988 between assignments, log-likelihoods within 0.05, no condition rate more than 0.4 points apart; ours reaches a slightly higher log-likelihood at $K=2$ to 4 (\texttt{reports/implementation-comparison.md}). Average-linkage hierarchical clustering on Jaccard distance and $k$-means, also our code, checked against SciPy and scikit-learn (\texttt{tests/test\_implementations.py}).
+\end{stub}
+
+\subsection{Number of classes}
+\label{sec:choosek}
+We fit $K=1$ to 8 and planned to choose $K$ by the Bayesian information criterion (BIC; \citealp{nylund2007}). As a baseline we refit every $K$ to a copy of the data with each column shuffled independently, which keeps every flag's prevalence and removes every association between flags. BIC fell at every $K$, and so did the held-out log-likelihood (Section~\ref{sec:dimensions}), so neither selected a $K$. After seeing this we adopted a stability rule: $K$ is the largest number of classes at which every class has a mean bootstrap Jaccard of at least 0.75 (Section~\ref{sec:checks}), following the stability approach of \citet{benhur2002} and \citet{lange2004} and Hennig's \citeyearpar{hennig2007} threshold. The rule uses only the bootstrap, so the other checks remain tests of the chosen classes. The 2025 results were visible when the rule was set, so the 2025 test is confirmatory rather than fully independent. $K=5$ is reported as a sensitivity analysis.
+
+\subsection{Checks}
+\label{sec:checks}
+Two labelings of the same children are compared with the adjusted Rand index (ARI; \citealp{hubert1985}), which is 1 for identical partitions and near 0 for unrelated ones and does not depend on how classes are numbered. Classes from different fits are matched by the Hungarian assignment on the distance between their profiles. The pass line, 0.65, is the floor of Steinley's \citeyearpar{steinley2004} ``moderate'' band. Each ARI has a 95\% interval from 500 resamples of children with both labelings held fixed. The checks, in the order of the checklist of \citet{agelink2021}:
+\begin{itemize}\setlength\itemsep{1pt}
+\item \emph{Second method.} $k$-means on the flags at the same $K$; 200 starts from each of five seeds, lowest-inertia solution reported with the range across seeds. The proposal's second method, average-linkage hierarchical clustering on Jaccard distance, is reported with five other methods.
+\item \emph{Held-out years.} One model fit on 2016 to 2021 ($n=4{,}575$), one on 2022 to 2024 ($n=4{,}316$); both label the 2022 to 2024 children.
+\item \emph{2025 forward test.} The frozen 2016 to 2024 model labels the 2025 children ($n=1{,}505$) and is compared with a fresh fit on 2025 alone.
+\item \emph{Bootstrap stability.} 200 resamples with replacement, refit, each original class matched to its best bootstrap class by Jaccard overlap on the children present. Mean Jaccard of 0.75 or more is stable, 0.5 or less has dissolved \citep{hennig2007}.
+\item \emph{Age bands.} Separate fits on ages 6 to 11 ($n=3{,}917$) and 12 to 17 ($n=4{,}974$), each compared with the pooled model's labels on its children.
+\item \emph{Parallel items.} Flags rebuilt from the ``ever told'' items in place of ``currently has'', refit, compared with the main labels.
+\item \emph{Robustness.} A fit with survey weights as frequency weights; a refit on all 9,710 children with each blank left out of that child's likelihood; refits from five further seeds.
+\end{itemize}
+
+\paragraph{Calibration.}
+Reproducing in new children does not make a partition a set of groups: a smooth distribution cut into $K$ pieces also reproduces. To know what the checks can tell apart, we ran the held-out-year, 2025, age-band and $k$-means checks with the same settings on five datasets simulated from the fitted two-dimensional latent trait model (Section~\ref{sec:dimensions}), which contains no classes, and five simulated from the fitted $K=4$ class model. Each simulated child keeps a real child's survey year and age, so the splits are the real splits. The bootstrap rule was calibrated the same way (50 resamples) on data from the two-dimensional model and from the $K=5$ class model. This was added after the first results.
+
+\subsection{Severity}
+\label{sec:severity-method}
+Parent-rated severity (mild, moderate, severe) was never shown to the clustering. The planned null test fits ordinal logistic regressions of severity, adjusted for age and sex, on the number of flagged conditions (\emph{count}), on class membership (\emph{class}) and on both, compared by BIC and five-fold cross-validated log-loss. As written before fitting: ``if \emph{class} and \emph{both} do not beat \emph{count}, the classes are a gradient in disguise.'' The sentence can be read as requiring either model or both to beat the count, so we report both readings. After the first results we added comparators that summarize the same flags in other ways: posterior class probabilities, the two factor scores of Section~\ref{sec:dimensions}, scores plus class, and all 18 flags. Modal class as a regressor ignores classification error \citep{vermunt2010}; the posterior probabilities are the check on that.
+
+\subsection{Classes or dimensions}
+\label{sec:dimensions}
+The continuous alternative is the multidimensional two-parameter logistic latent trait model (binary factor analysis). Each child has a position $\boldsymbol{\eta}_i\sim N(\mathbf{0},I_D)$, and
+\[
+P(x_{ij}=1\mid\boldsymbol{\eta}_i)=\operatorname{logit}^{-1}\!\left(\mathbf{a}_j^{\top}\boldsymbol{\eta}_i+b_j\right),
+\]
+with flags independent given position. We fit $D=1$ to 4 by marginal maximum likelihood, integrating $\boldsymbol{\eta}$ on a Gauss-Hermite grid (21, 15, 11 and 7 points per dimension, rechecked on a finer grid), with EM to a warm start and then L-BFGS on the exact gradient. The marginal likelihood is on the same scale as the latent class likelihood, so BIC compares the two families directly; $D=2$ has 53 parameters against 75 for $K=4$. Slopes are varimax-rotated for reading, which leaves the likelihood unchanged, and bounded at 10 in absolute value; a fit that ends on the bound has a dimension collapsed onto one item (a Heywood case) and is reported but not interpreted. Standard errors for the $D=2$ slopes come from 50 bootstrap refits rotated onto the full-data slopes by orthogonal Procrustes. Each child's position for plotting is one draw from its posterior, which keeps the spread that posterior means lose.
+
+Four further comparisons follow \citet{lubke2006} and \citet{markon2006}. \emph{Local dependence:} for every pair of flags, a Pearson $\chi^2$ comparing the observed share with both flags against the model's. \emph{Simulation in both directions} \citep{bauer2004}: three datasets from the $D=2$ model and three from the $K=4$ model, each run through the class BIC sweep. \emph{Held-out likelihood:} every model fit on 2016 to 2021 and scored on 2022 to 2024, and fit on 2016 to 2024 and scored on 2025, with standard errors for each difference from the per-child differences. \emph{Shape of the latent distribution:} holding the $D=2$ item parameters fixed, the distribution of positions estimated nonparametrically on a $41\times41$ grid \citep{laird1978}, reported as the gain in log-likelihood over the normal, and compared with the same estimate on five datasets simulated from each model.
+
+\subsection{Description}
+Survey weights are used only to describe the classes, never to fit them: class shares with design-based standard errors (strata of year by state by sampling stratum, Taylor linearization), severity, age and sex by class. Shares are averages of posterior probabilities rather than modal counts, so assignment uncertainty is carried into them.

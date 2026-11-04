@@ -48,7 +48,7 @@ reports/data-overview.md     the data in raw and processed form, with figures
 reports/figures/results/     the results figures (classes, severity, loadings, checks by K, BIC curves)
 reports/figures/backend_comparison/  our code against StepMix, side by side
 reports/implementation-comparison.md  manually maintained comparison notes
-paper/                       outline and draft sections
+paper/                       the paper (LaTeX; `make paper`) and its outline
 docs/background.md           start here if the data or the methods are new to you
 docs/implementation-spec.md  what the from-scratch code has to do, and the tests it has to pass
 docs/validation-checklist.md what each check found, decisions taken after the first results, related studies
@@ -115,8 +115,8 @@ What the runs found (details in `docs/validation-checklist.md`, figures in `repo
 
 - BIC kept falling through K = 8, and so did held-out likelihood, so neither picks a K. K was chosen after the fact as the largest K at which every class is bootstrap-stable. That is K = 4. Simulation shows that a smooth continuum with no groups is also stable at K = 4 and 5, so this K means "the finest division that comes back reliably", not proof of four groups.
 - The four classes are the combinations of high and low on two axes, developmental-language and psychiatric. Weighted shares of U.S. autistic children aged 6 to 17: fewer co-occurring conditions 34%, developmental-language 33%, psychiatric 18%, both 16%.
-- The partition reproduces across survey years (ARI 0.71), in the 2025 file (0.79), within age bands (0.72, 0.77) and under resampling (Jaccard 0.91 or better). The "ever told" items agree at 0.66, just over the line. The second-method check fails (k-means ARI 0.54); the disagreement is about children near a border.
-- Those scores are what a four-way partition of a smooth continuum produces. Run on data simulated from the two-dimensional model, with no classes in it, the same checks score 0.66 to 0.85, 0.56 to 0.78, 0.56 to 0.95 and 0.44 to 0.54; data simulated with four real classes score 0.79 to 0.95, 0.81 to 0.91, 0.93 to 0.98 and 0.57 to 0.60. The real data replicate like the continuum (`reports/figures/results/replication_vs_simulation.png`).
+- The partition reproduces across survey years (ARI 0.71), in the 2025 file (0.79), within age bands (0.71, 0.77) and under resampling (Jaccard 0.91 or better). The "ever told" items agree at 0.66, just over the line. The second-method check fails (k-means ARI 0.54); the disagreement is about children near a border.
+- Those scores are what a four-way partition of a smooth continuum produces. Run on data simulated from the two-dimensional model, with no classes in it, the same checks score 0.66 to 0.85, 0.56 to 0.78, 0.56 to 0.95 and 0.44 to 0.54; data simulated with four real classes score 0.78 to 0.95, 0.81 to 0.91, 0.93 to 0.98 and 0.57 to 0.60. The real data replicate like the continuum (`reports/figures/results/replication_vs_simulation.png`).
 - Parent-rated severity follows the developmental-language axis and not the psychiatric one. Classes add to a plain condition count, but two continuous scores predict severity better than the classes do.
 - A two-dimensional latent trait model fits better than any number of classes and predicts new survey years as well as eight classes with a third of the parameters. A third dimension picks up medical and sensory conditions, the same signal as a small fifth class that does not hold together under resampling. Finer class solutions fail replication.
 - Estimated from the data, the distribution of children on the two scales is lumpier than a bell curve but about half as lumpy as four separate groups would make it: some concentration at typical combinations on top of continuous variation. The map of children in that space (`reports/figures/results/map.png`) shows one cloud with the classes as regions of it.

@@ -8,11 +8,11 @@ The claim, in three beats. First, the four profiles clinic studies report are he
 
 Order of the results: lead with the map and the two axes (section 4.5 material), then the four profiles as its reproducible quadrants (4.1), then the checks as a single pass/fail table with the simulated ranges beside them (4.2), then severity. The reader should meet the continuum before the classes.
 
-Target length: 8 to 10 pages plus supplement, in whatever format the course asks for. Every result sentence below has a file behind it; the path is given so the draft can cite numbers without re-deriving them.
+Target length: 8 to 10 pages plus supplement. The paper is `main.tex` with one file per section in `sections/`; `make paper` builds it, and sections still to write are marked as stubs listing the numbers and files they need. Every result sentence below has a file behind it.
 
 ## Abstract (150 words)
 
-Problem, data, method, three findings, one caveat. Draft in `abstract.md` once results are frozen.
+Problem, data, method, three findings, one caveat. Drafted last, in `sections/abstract.tex`.
 
 ## 1. Introduction (1 page)
 
@@ -34,7 +34,7 @@ Source: `reports/data-overview.md`, `data/processed/selection_counts.csv`, `data
 
 ## 3. Methods (1.5 pages)
 
-Source: `docs/background.md` section 3, `docs/implementation-spec.md`, draft in `methods.md`.
+Source: `docs/background.md` section 3, `docs/implementation-spec.md`, drafted in `sections/methods.tex`.
 
 - Latent class model, EM, implemented from scratch; every number comes from our code, with StepMix as the check (ARI 0.99 at K=4; `reports/implementation-comparison.md`).
 - Choice of K: BIC planned; BIC and held-out likelihood both keep improving; the stability rule (stated as post hoc).
@@ -51,7 +51,7 @@ Source: `docs/background.md` section 3, `docs/implementation-spec.md`, draft in 
 `results_k4/lca_k4.npz`, `reports/figures/results/classes.png`, `reports/tables/class_names_k4.csv`, `results_k4/shares.csv`. Profiles, weighted national shares with intervals, age and sex by class.
 
 ### 4.3 What replicates, and what replication can show
-Held-out years 0.71, 2025 0.79 with shares (`reports/figures/results/shares_pooled_vs_2025.png`), bootstrap 0.91 to 0.93, age bands 0.72 and 0.77, "ever told" 0.66 (marginal). Second method 0.54 (0.52 to 0.58 across seeds): fails, but 0.93 among children placed with probability 0.9 or more. Then the calibration (`reports/tables/replication_calibration.csv`, `reports/figures/results/replication_vs_simulation.png`): the same checks on five datasets simulated from the two-dimensional model (no classes) and five from the four-class model. The real scores sit in the continuum's ranges and well below the four-class ranges on every check. Class shares by survey year (`reports/figures/results/shares_by_year.png`) stay within their intervals. Method table (`reports/tables/method_comparison.csv`) and the dendrogram.
+Held-out years 0.71, 2025 0.79 with shares (`reports/figures/results/shares_pooled_vs_2025.png`), bootstrap 0.91 to 0.93, age bands 0.71 and 0.77, "ever told" 0.66 (marginal). Second method 0.54 (0.52 to 0.58 across seeds): fails, but 0.93 among children placed with probability 0.9 or more. Then the calibration (`reports/tables/replication_calibration.csv`, `reports/figures/results/replication_vs_simulation.png`): the same checks on five datasets simulated from the two-dimensional model (no classes) and five from the four-class model. The real scores sit in the continuum's ranges and well below the four-class ranges on every check. Class shares by survey year (`reports/figures/results/shares_by_year.png`) stay within their intervals. Method table (`reports/tables/method_comparison.csv`) and the dendrogram.
 
 ### 4.4 Severity
 `results_k4/severity_by_class.csv`, `results_k4/count_vs_class.csv`, `reports/figures/results/severity_by_class.png`. About 20% severe in the two developmental classes, 2% to 4% in the other two. Count plus class beats count; class alone does not; factor scores beat count plus class. Both readings of the pre-fit wording.
@@ -103,6 +103,6 @@ Supplement figures: `checks_by_k.png`, `stability_vs_simulation.png`, `latent_de
 - S8 stability calibration table and latent density estimates for every simulated dataset.
 - S9 the codebook.
 
-## Division of labor (proposal, to confirm)
+## Division of labor
 
-Chris: data, methods sections 3 (checks and the continuous model), results 4.1, 4.3, 4.5, reproducibility, figures. Haley: methods section 3 (EM and hierarchical), results 4.2, 4.4, 4.6, discussion first draft. Both: introduction, abstract, limitations.
+Chris: data, methods (design, choice of K, checks, severity test, continuous model, description), results 5.1, 5.2, 5.4 and 5.5 (axes, number of classes, replication, classes or dimensions), reproducibility, figures. Haley: methods (latent class model and EM), results on the four profiles, severity and K = 5, discussion first draft. Both: introduction, abstract, limitations.
