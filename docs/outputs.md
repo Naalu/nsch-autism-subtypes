@@ -10,7 +10,7 @@ This is the reference for anyone running, checking or changing the pipeline. It 
 | `results/` | The **main folder**, written by our from-scratch code. Step 3's fits for K = 1 to 8, step 13's held-out likelihood and its choice of K. If steps 4 to 12 were run without `--k`, their outputs for that K land here too. | No |
 | `results_k{K}/` | Steps 4 to 12, the step 6 bootstrap and step 15 at one K, run by `scripts/sweep_k.sh`. Each holds a copy of that K's step 3 fit, so the folder is self-contained. | No |
 | `results_reference/`, `results_reference_k{K}/` | The same, made with StepMix / SciPy / scikit-learn (`BACKEND=reference`), as the check on our code. | No |
-| `reports/figures/results/`, `reports/tables/` | The results figures and summary tables, drawn from `results/`. | Yes |
+| `reports/figures/results/`, `reports/tables/` | The results figures and summary tables, drawn from `results/`. `paper/outline.md` lists which figure goes where. Every figure uses one color per class and per axis: developmental-language blue, psychiatric purple, both rust, neither gray. | Yes |
 | `reports/figures/results_reference/`, `reports/tables/results_reference/` | The same figures and tables from a reference run, if one is drawn. Kept separate so they never overwrite the main ones. | Yes |
 | `reports/figures/backend_comparison/` | Our code against StepMix: BIC overlay, matched profiles and rate differences. | Yes |
 | `reports/implementation-comparison.md` | Manually maintained comparison notes; not written by the comparison script. | Yes |

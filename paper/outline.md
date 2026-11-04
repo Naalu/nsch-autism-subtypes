@@ -76,6 +76,21 @@ Held-out years 0.71, 2025 0.79 with shares (`reports/figures/results/shares_pool
 
 Repository, `make all`, committed analysis table and codebook, locked dependencies, CI, from-scratch versus library agreement, seeds. Statement that no IRB review was required.
 
+## Figures and tables
+
+Main text, in reading order. All in `reports/figures/results/` and `reports/tables/`; one color per class and per axis throughout (developmental-language blue, psychiatric purple, both rust, neither gray).
+
+1. `figure1_map.png`: the children on the two named axes, the classes as its regions, uncertain children faded, the two cuts. The reveal; everything after refers back to it.
+2. `loadings.png`: which conditions define each axis, with bootstrap intervals.
+3. `classes.png`: the four profiles as condition rates, with weighted shares.
+4. `checks_k4.png`: every agreement check at K=4 with intervals, beside the ranges from simulated continuum and four-class data (`replication_vs_simulation.png` is the same comparison on its own).
+5. `model_fit.png`: in-sample BIC and held-out likelihood for both families; D=4 hollow (degenerate).
+6. `severity_map.png`: share rated severe across the map. Severity rises along the developmental axis and does not jump at the class borders. `severity_by_class.png` gives the same by class.
+
+Table 1: sample by year and exclusions (`data/processed/selection_counts.csv`). Table 2: model comparison (`reports/tables/model_comparison.csv`, `heldout_selection.csv`). Table 3: the checks (`reports/tables/checks_by_k.csv` row K=4, `replication_calibration.csv`).
+
+Supplement figures: `checks_by_k.png`, `stability_vs_simulation.png`, `latent_density.png`, `shares_pooled_vs_2025.png`, `shares_by_year.png`, `agreement_by_confidence.png`, `map.png` (two-panel version with condition arrows).
+
 ## Supplement
 
 - S1 full BIC table with entropy and smallest class share for K=1 to 8, real and shuffled.
