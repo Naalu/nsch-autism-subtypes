@@ -1,0 +1,42 @@
+\section{Data}
+\label{sec:data}
+
+\paragraph{Survey.}
+The NSCH is a yearly household survey run by the Census Bureau for the Maternal and Child Health Bureau. A household is sampled by address, one child is selected, and a parent or caregiver answers a questionnaire about that child online or on paper \citep{ghandour2018}. Each child carries a survey weight, the number of US children that child stands for. We use the ten public topical files from 2016 to 2025, 431,222 children in all.
+
+\paragraph{Selection.}
+We keep children aged 6 to 17 whose parent reports that a doctor or other health care provider has told them the child has autism and that the child currently has it. ``Currently'' leaves out children whose diagnosis was later ruled out, and children aged 6 to 17 answer the same questionnaire items on conditions and are old enough for most to have been diagnosed. This gives 9,710 children for 2016 to 2024 and 1,660 for 2025 (Table~\ref{tab:sample}). The 2025 file was released on October 5, 2026; it was processed with the other years, but no model was fit to it and no modeling choice used it until the forward test in Section~\ref{sec:checks}.
+
+\begin{table}[t]
+\centering
+\caption{Children per survey year. Selected: aged 6 to 17 with current autism. Complete: no missing condition flag, the sample the models are fit to. 2025 is held out.}
+\label{tab:sample}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Year & All children & Aged 6--17 & Selected & Complete \\
+\midrule
+2016 & 50,212 & 35,718 & 1,008 & 922 \\
+2017 & 21,599 & 15,438 & 494 & 456 \\
+2018 & 30,530 & 21,954 & 687 & 619 \\
+2019 & 29,433 & 21,259 & 693 & 643 \\
+2020 & 42,777 & 30,636 & 1,030 & 953 \\
+2021 & 50,892 & 30,173 & 1,085 & 982 \\
+2022 & 54,103 & 34,362 & 1,355 & 1,248 \\
+2023 & 55,162 & 33,638 & 1,464 & 1,333 \\
+2024 & 51,375 & 37,534 & 1,894 & 1,735 \\
+\midrule
+2016--2024 & 386,083 & 260,712 & 9,710 & 8,891 \\
+2025 & 45,139 & 33,039 & 1,660 & 1,505 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Conditions.}
+The survey asks about each of 24 conditions as a pair of items: has a provider ever told you the child has it, and if so, does the child currently have it. We encode one flag per condition: 1 if ever and currently, 0 if never or not currently, and missing if either answer is blank. Five conditions (cerebral palsy, blood disorders, Down syndrome, deafness or hearing problems, blindness or vision problems) have no ``currently'' item because they are lifelong or structural, and the ``ever'' answer is the flag. We dropped six conditions, each for a stated reason: arthritis, brain injury and ``other genetic condition'' left the survey during the period, diabetes entered it in 2022, the allergy item changed wording in 2022 (and its rate jumped from 34\% to 39\%), and cystic fibrosis was below our 1\% prevalence floor. That leaves 18 flags. In the 2016 to 2024 sample, developmental delay, learning disability, behavior problems, ADHD and anxiety each affect about half of the children; speech or language disorder 40\%; depression 20\%; intellectual disability 17\%; asthma 12\%; and the remaining nine conditions between 1\% and 8\%.
+
+\paragraph{Missing answers.}
+819 of the 9,710 children (8.4\%) have at least one blank flag, most often anxiety (2.0\% blank). The main analysis uses the 8,891 complete children. Those dropped are similar in age and sex to those kept and slightly more often rated severe (12\% against 10\%), and a refit that keeps them gives the same classes (Section~\ref{sec:replication}).
+
+\paragraph{What the flags are.}
+Each flag is a parent's report that a provider diagnosed a condition, not a clinical assessment, so it reflects access to care and diagnostic practice as well as the child. The complete sample is 77\% male, mean age 12.0, and its parents rate autism as mild for 52\%, moderate for 38\% and severe for 10\%. Severity was never shown to the models.

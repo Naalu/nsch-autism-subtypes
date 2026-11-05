@@ -1,0 +1,54 @@
+% Paper for CS 472/572 (Unsupervised Learning), Fall 2026.
+% Build: `make paper` from the repository root, or `latexmk -pdf main.tex` here.
+% Figures are read from ../reports/figures/ so the paper always shows the committed results.
+
+\documentclass[10pt,twocolumn]{article}
+
+\usepackage[letterpaper,margin=0.75in,columnsep=0.25in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\graphicspath{{../reports/figures/results/}{../reports/figures/}}
+
+% Sections still to be written. Each stub lists what the section must say,
+% the numbers it needs and the files they come from. Delete the stub once
+% the section is drafted; `make paper` prints how many are left.
+\definecolor{stubcolor}{HTML}{8A3B12}
+\newenvironment{stub}[1]
+  {\par\smallskip\noindent\color{stubcolor}\small\textbf{To write (#1).}\ }
+  {\par\smallskip}
+
+\newcommand{\K}{\ensuremath{K}}
+
+\title{Two axes, not four boxes: co-occurring conditions in a national sample of autistic children replicate as a continuum}
+\author{Chris Reger \and Haley Berger\\[2pt]
+  \small School of Informatics, Computing, and Cyber Systems, Northern Arizona University\\
+  \small \texttt{github.com/Naalu/nsch-autism-subtypes}}
+\date{}
+
+\begin{document}
+\maketitle
+
+\input{sections/abstract}
+\input{sections/introduction}
+\input{sections/related-work}
+\input{sections/data}
+\input{sections/methods}
+\input{sections/results}
+\input{sections/discussion}
+\input{sections/reproducibility}
+
+{\small
+\bibliographystyle{plainnat}
+\bibliography{references}
+}
+
+\end{document}

@@ -13,7 +13,7 @@ NBOOT   ?= 200
 KS      ?= 4 5 6 7 8
 K       ?= 4
 
-.PHONY: help all download fit sweep choose calibrate figures compare overview test smoke lint clean
+.PHONY: help all download fit sweep choose calibrate figures compare overview paper test smoke lint clean
 
 help:
 	@echo "make test       unit tests on synthetic data (seconds)"
@@ -25,6 +25,7 @@ help:
 	@echo "make figures    redraw the results figures from existing outputs"
 	@echo "make compare    compare saved reference and from-scratch fits, with tables, data, and diagrams"
 	@echo "make overview   the data-overview figures (needs data/interim from 'make download')"
+	@echo "make paper      build paper/main.pdf from the committed figures (needs LaTeX)"
 	@echo "make download   steps 1 and 2 from the Census files (about 60 MB; not needed for anything else)"
 	@echo "make all        fit + sweep"
 	@echo "Options: BACKEND=$(BACKEND) STARTS=$(STARTS) NBOOT=$(NBOOT) KS='$(KS)' K=$(K)"
@@ -58,6 +59,10 @@ compare:
 
 overview:
 	$(PY) scripts/make_data_overview.py
+
+paper:
+	cd paper && latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
+	@n=$$(grep -l 'begin{stub}' paper/sections/*.tex | wc -l); echo "sections with text still to write: $$n"
 
 test:
 	uv run pytest -q -m "not slow"
