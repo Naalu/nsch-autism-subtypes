@@ -34,7 +34,7 @@ Source: `reports/data-overview.md`, `data/processed/selection_counts.csv`, `data
 
 ## 3. Methods (1.5 pages)
 
-Source: `docs/background.md` section 3, `docs/implementation-spec.md`, drafted in `sections/methods.tex`.
+Source: `docs/background.md` section 3, `docs/implementation.md`, drafted in `sections/methods.tex`.
 
 - Latent class model, EM, implemented from scratch; every number comes from our code, with StepMix as the check (ARI 0.99 at K=4; `reports/implementation-comparison.md`).
 - Choice of K: BIC planned; BIC and held-out likelihood both keep improving; the stability rule (stated as post hoc).

@@ -1,12 +1,12 @@
 # Team notes
 
-Where the project stands, what is waiting on what, and how to pick it up. Updated November 3, 2026.
+Where the project stands, what is waiting on what, and how to pick it up.
 
 ## Where we are
 
-The pipeline runs end to end on the real 2016 to 2025 files with our from-scratch code, which is the default backend. Every check in the proposal has been run at K = 4 to 8 with 200 bootstrap resamples, plus the checks added after the first results (steps 9 to 14). The findings are summarized in the README status section and argued in `docs/validation-checklist.md`; the figures are in `reports/figures/results/`.
+The pipeline runs end to end on the real 2016 to 2025 files with our from-scratch code, which is the default backend. Every check in the proposal has been run at K = 4 to 8 with 200 bootstrap resamples, plus the checks added after the first results (steps 9 to 15). The findings are summarized in the README and argued in `docs/validation-checklist.md` and the paper; the figures are in `reports/figures/results/`.
 
-Short version: four broad profiles, the combinations of high and low on two axes (developmental-language and psychiatric), replicate. Their borders are soft: a continuous model fits better and predicts new years as well as eight classes, finer class solutions do not replicate, and medical and sensory conditions show up as a third axis or as a small unstable fifth class. Severity follows the developmental axis.
+Short version: two axes, not four boxes. Four broad profiles, the combinations of high and low on a developmental-language and a psychiatric axis, replicate, but only as well as the same cut of a smooth continuum does (step 15). A continuous model fits better and predicts new years as well as eight classes, finer class solutions do not replicate, and medical and sensory conditions show up as a third axis or as a small unstable fifth class. Severity follows the developmental axis.
 
 The same pipeline run with StepMix, SciPy and scikit-learn (`BACKEND=reference`, into `results_reference/`) is the check on our code. The latent class fits agree at ARI 0.988, 0.978 and 0.966 at K = 4, 5 and 6, and every K = 4 check with a pass line moves by 0.02 or less. `reports/implementation-comparison.md` has the comparison at K = 1 to 4.
 
@@ -25,9 +25,11 @@ The same pipeline run with StepMix, SciPy and scikit-learn (`BACKEND=reference`,
 ## Things not yet done
 
 - The AI-disclosure line in the README.
-- Paper and final presentation dates in the README.
-- Updating the checkpoint slide deck with the results figures.
-- The paper itself: outline and methods draft in `paper/`.
+- The Week 13 update slides, from the results figures.
+- The paper sections still marked as stubs (`make paper` prints how many): abstract, the latent class model, the four profiles, severity, K = 5 and the discussion. `paper/outline.md` has the division of labor.
+- Confirm the Ward-linkage ARI in `reports/tables/method_comparison.csv` (0.34) with a fresh `scripts/04_crosscheck.py --method alternatives` run; a cloud rerun gave 0.24, probably from how tied merges are broken.
+- At the analysis freeze: commit the result folders with `git add -f`, and the final `paper/main.pdf`.
+- The final slides need the repository link (and the website link, if we build the site).
 
 ## How to rerun anything
 
@@ -35,8 +37,9 @@ The same pipeline run with StepMix, SciPy and scikit-learn (`BACKEND=reference`,
     make test                                # unit tests, synthetic data
     make smoke                               # every script once at tiny settings, both backends
     make fit                                 # step 3 into results/
-    make sweep KS="4 5 6 7 8"                # steps 4 to 14 at each K, then the figures (about 3 hours)
-    make choose calibrate figures            # just steps 13 and 14 and the figures, from existing outputs
+    make sweep                               # steps 4 to 15 at K = 4 to 8, then steps 13 and 14 and the figures (4 to 5 hours)
+    make choose calibrate figures            # just steps 13 to 15 and the figures, from existing outputs
+    make paper                               # build paper/main.pdf
     BACKEND=reference make fit sweep         # the same with StepMix, into results_reference/
     make compare                             # our fits against StepMix's
     make download                            # only to rebuild the analysis table from the Census files

@@ -2,7 +2,7 @@
 
 This file implements Jaccard distances and weighted average linkage using
 NumPy only. Select it with ``--backend ours``; ``reference.cluster_scipy``
-is the library counterpart (see docs/implementation-spec.md).
+is the library counterpart (see docs/implementation.md).
 
 Why a second method
 -------------------

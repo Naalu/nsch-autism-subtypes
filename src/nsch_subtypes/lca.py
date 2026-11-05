@@ -2,7 +2,7 @@
 
 This file implements Bernoulli-mixture EM using NumPy only. The pipeline
 selects it with ``--backend ours``; ``--backend reference`` selects the
-StepMix wrapper. Both return LCAResult (see docs/implementation-spec.md).
+StepMix wrapper. Both return LCAResult (see docs/implementation.md).
 
 The model
 ---------
@@ -213,7 +213,7 @@ def fit_lca(
     of 18 small probabilities underflows. Rates are clipped to ``[1e-6, 1 - 1e-6]``
     after each M-step. Each start draws rates uniformly from (0.2, 0.8) with
     equal class sizes. For ``n_classes == 1`` the rates are the column means and
-    no iteration is needed. See ``docs/implementation-spec.md`` for the contract
+    no iteration is needed. See ``docs/implementation.md`` for the contract
     shared with the StepMix reference.
     """
     # Validate once, before any random starts or numerical work.

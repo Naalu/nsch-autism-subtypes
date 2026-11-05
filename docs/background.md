@@ -147,6 +147,12 @@ The continuous model assumes children's positions on its two scales follow a bel
 
 The estimate is always a bit lumpy, even when the truth is a smooth bell curve, so the number only means something next to a yardstick. We make fake datasets of the same size from the continuous model (no clumps) and from the four-class model (four tight clumps), run each through the same estimate, and see where the real data fall between them.
 
+### "Would a continuum pass the same checks?" (calibration by simulation)
+
+Passing a replication check means the partition comes back in other children. It does not by itself mean the pieces are groups, because a smooth cloud cut into four pieces also comes back: cut it the same way in a new sample and you get nearly the same four pieces. To see how much that matters here, `scripts/15_replication_calibration.py` makes fake datasets the same size as ours, five from the continuous model (no groups) and five from the four-class model (four real groups), keeping each real child's survey year and age so the splits are the real ones. It runs the held-out-year, 2025, age-band and k-means checks on each fake dataset exactly as on the real one. The real scores are then read against the two ranges: a score inside the continuum's range says the check cannot tell groups from a continuum at this K. `scripts/14_shape_and_stability.py` does the same for the bootstrap, so that "every class is stable" can be read the same way.
+
+On our data the real scores sit with the continuum's and below the four-class range on every check: the partition is reproducible, the way a cut continuum is.
+
 ### "How much structure generalizes?" (held-out likelihood)
 
 BIC is computed on the same children the model was fit on. A sharper question is how well a model fit on some years predicts children it has never seen. `scripts/13_heldout_selection.py` fits every latent class and latent trait model on 2016 to 2021 and scores it on 2022 to 2024, then fits on 2016 to 2024 and scores it on 2025. The score is the held-out log-likelihood: how probable the model finds the new children's rows. Higher is better, and it cannot be gamed by adding parameters, because extra parameters that only fit noise make predictions on new children worse.
@@ -187,6 +193,7 @@ This answers "how much structure is there, and which kind of model captures it m
 
 - `reports/data-overview.md` shows the actual rows, raw and processed, with figures.
 - `docs/validation-checklist.md` lines the project up against a published checklist for subtyping studies and lists the papers we compare with.
-- `docs/implementation-spec.md` is the contract for the from-scratch code.
+- `docs/implementation.md` explains how the from-scratch code works and how it is tested.
 - `docs/outputs.md` lists every file the pipeline writes and how to add a condition or a check.
 - The scripts in `scripts/` are numbered in the order described here and each starts with a plain-language summary.
+- `paper/` is the write-up: the argument in full, with every number traced to a file.
