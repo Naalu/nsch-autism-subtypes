@@ -1,4 +1,4 @@
-"""Step 10 of 14. Parallel validation: do the classes survive a different operationalization of the same conditions?
+"""Step 10 of 16. Parallel validation: do the classes survive a different operationalization of the same conditions?
 
 Why this check exists
 ---------------------

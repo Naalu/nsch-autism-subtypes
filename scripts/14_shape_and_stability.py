@@ -1,4 +1,4 @@
-"""Step 14 of 14. Do children clump in the two-dimensional space, and what does stability mean here?
+"""Step 14 of 16. Do children clump in the two-dimensional space, and what does stability mean here?
 
 Why this step exists
 --------------------

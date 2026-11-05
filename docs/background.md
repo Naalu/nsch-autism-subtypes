@@ -115,6 +115,12 @@ The most boring explanation of any subtype result is that the groups are childre
 
 The rule as written before fitting was "if class and both do not beat count, the classes are a gradient in disguise." That sentence can be read two ways, and we report both: count plus class does beat count alone, and class alone does not. We also compare against other summaries of the same 18 flags: each child's class probabilities instead of a single label, each child's position on the continuous scales described below, and all 18 flags entered separately. Those comparisons say how much of what severity tracks is captured by the classes compared with the alternatives.
 
+### "Do the groups predict what a child needs?" (more held-out outcomes)
+
+Severity is one outcome. The survey also asks whether the child needed health care in the past year and did not get it, and how many times the child went to an emergency room. `scripts/16_outcomes.py` runs the same comparison on all three (count, class, both, and the other summaries), adjusting for survey year as well, and scores every model on the 2025 children it never saw.
+
+Two of the survey years, 2020 and 2021, fall in the COVID-19 pandemic, when care was disrupted. We keep them, as the survey's own documentation and other studies do, and ask two questions instead. Did the link between class and each outcome change across before, during and after? (We add a class-by-period term to the model and test whether it helps.) And do the classes themselves change if those two years are left out? (We refit without them and compare.) The rules for both were written down before either was run.
+
 ### "What would no structure look like?" (shuffled baseline)
 
 Shuffle each column of the table independently. Every condition keeps its prevalence, but every link between conditions is destroyed. Fitting the latent class model to the shuffled table shows how the BIC curve behaves when there is nothing to find, for comparison with the real curve.

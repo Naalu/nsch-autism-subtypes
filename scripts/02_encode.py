@@ -1,4 +1,4 @@
-"""Step 2 of 14. Turn survey answers into the 0/1 table the clustering methods use.
+"""Step 2 of 16. Turn survey answers into the 0/1 table the clustering methods use.
 
 What happens here
 -----------------

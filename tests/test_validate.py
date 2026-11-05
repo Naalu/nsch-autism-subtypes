@@ -15,6 +15,9 @@ from nsch_subtypes.validate import (
     class_probabilities,
     match_classes,
     mean_rate_difference,
+    outcome_count_vs_class,
+    outcome_heldout_loss,
+    outcome_period_test,
     relabel_to_match,
     severity_count_vs_class,
     shuffle_each_column,
@@ -160,3 +163,47 @@ def test_severity_test_detects_classes_that_carry_information_beyond_the_count()
     assert out.loc["both", "bic"] < out.loc["count", "bic"]
     assert out.loc["both", "cv_log_loss"] < out.loc["count", "cv_log_loss"]
     assert out.loc["count", "bic_vs_count"] == 0
+
+
+def _outcome_table(seed: int, n: int, class_effect_by_year: dict[int, float]):
+    """Fake children with a yes/no outcome whose link to class can differ by survey year."""
+    rng = np.random.default_rng(seed)
+    labels = rng.integers(0, 2, n)
+    flags = [f"f{j}" for j in range(4)]
+    X = (rng.random((n, 4)) < 0.4).astype(int)
+    year = rng.choice(list(class_effect_by_year), n)
+    effect = np.array([class_effect_by_year[y] for y in year])
+    latent = -2.0 + 0.3 * X.sum(axis=1) + effect * labels + rng.logistic(size=n)
+    table = pd.DataFrame(X, columns=flags).assign(
+        outcome=np.where(latent > 0, "yes", "no"), year=year, sex=np.where(rng.random(n) < 0.2, "female", "male"), age=rng.integers(6, 18, n)
+    )
+    return table, labels, flags
+
+
+def test_outcome_test_works_for_a_yes_no_outcome_with_year_adjustment():
+    table, labels, flags = _outcome_table(seed=4, n=2000, class_effect_by_year={2016: 1.5, 2017: 1.5, 2018: 1.5})
+    out = outcome_count_vs_class(table, "outcome", ["no", "yes"], labels, flags, n_folds=3, adjust_for_year=True).set_index("model")
+    assert out.loc["both", "bic"] < out.loc["count", "bic"]
+    # Two levels means one cut point; two year indicators, age, sex, count and one class indicator.
+    assert out.loc["both", "n_params"] == 1 + 2 + 2 + 1 + 1
+
+
+def test_period_test_finds_a_class_link_that_appears_in_one_period_only():
+    years = {2016: 0.0, 2017: 0.0, 2020: 2.0, 2021: 2.0}
+    periods = {"before": range(2016, 2020), "during": range(2020, 2022)}
+    table, labels, flags = _outcome_table(seed=5, n=3000, class_effect_by_year=years)
+    changed = outcome_period_test(table, "outcome", ["no", "yes"], labels, flags, periods)
+    assert changed["df"] == 1 and changed["p_value"] < 1e-6
+
+    table, labels, flags = _outcome_table(seed=6, n=3000, class_effect_by_year={y: 1.0 for y in years})
+    steady = outcome_period_test(table, "outcome", ["no", "yes"], labels, flags, periods)
+    assert steady["p_value"] > 0.001
+
+
+def test_heldout_scoring_handles_a_year_the_model_never_saw():
+    train, train_labels, flags = _outcome_table(seed=7, n=2000, class_effect_by_year={2022: 1.5, 2023: 1.5, 2024: 1.5})
+    test, test_labels, _ = _outcome_table(seed=8, n=500, class_effect_by_year={2025: 1.5})
+    out = outcome_heldout_loss(train, train_labels, test, test_labels, "outcome", ["no", "yes"], flags).set_index("model")
+    assert (out["n_test"] == 500).all()
+    assert out.loc["both", "test_log_loss"] < out.loc["count", "test_log_loss"]
+    assert out.loc["count", "vs_count"] == 0

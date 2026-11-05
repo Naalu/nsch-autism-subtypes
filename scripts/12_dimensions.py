@@ -1,4 +1,4 @@
-"""Step 12 of 14. Classes or dimensions? Continuous models against the latent classes.
+"""Step 12 of 16. Classes or dimensions? Continuous models against the latent classes.
 
 Why this step exists
 --------------------

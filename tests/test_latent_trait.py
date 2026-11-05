@@ -9,6 +9,7 @@ from nsch_subtypes.latent_trait import (
     fit_latent_trait,
     latent_trait_log_likelihood,
     latent_trait_pair_probabilities,
+    latent_trait_scores,
     simulate_latent_trait,
 )
 
@@ -68,6 +69,8 @@ def test_scoring_function_agrees_with_the_fit_and_rotation_is_orthogonal():
     assert np.isclose(latent_trait_log_likelihood(fit, X), fit.log_likelihood, atol=1e-6 * abs(fit.log_likelihood))
     assert latent_trait_log_likelihood(fit, X, per_child=True).shape == (1500,)
     assert np.allclose(fit.rotation @ fit.rotation.T, np.eye(2))
+    # Scoring the fitting children again gives the scores the fit returned.
+    assert np.allclose(latent_trait_scores(fit, X), fit.scores, atol=1e-8)
 
 
 def test_pair_probabilities_match_simulated_frequencies():

@@ -1,4 +1,4 @@
-"""Step 6 of 14. Does each class survive when the sample is shaken?
+"""Step 6 of 16. Does each class survive when the sample is shaken?
 
 What happens here
 -----------------

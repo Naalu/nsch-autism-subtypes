@@ -37,7 +37,7 @@ The same pipeline run with StepMix, SciPy and scikit-learn (`BACKEND=reference`,
     make test                                # unit tests, synthetic data
     make smoke                               # every script once at tiny settings, both backends
     make fit                                 # step 3 into results/
-    make sweep                               # steps 4 to 15 at K = 4 to 8, then steps 13 and 14 and the figures (4 to 5 hours)
+    make sweep                               # steps 4 to 16 at K = 4 to 8, then steps 13 and 14 and the figures (4 to 5 hours)
     make choose calibrate figures            # just steps 13 to 15 and the figures, from existing outputs
     make paper                               # build paper/main.pdf
     BACKEND=reference make fit sweep         # the same with StepMix, into results_reference/

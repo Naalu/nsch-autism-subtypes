@@ -304,6 +304,19 @@ def latent_trait_log_likelihood(result: LatentTraitResult, X: np.ndarray, per_ch
     return rows if per_child else total
 
 
+def latent_trait_scores(result: LatentTraitResult, X: np.ndarray) -> np.ndarray:
+    """Posterior mean positions of new children under a fitted model, in the rotated frame (n, D).
+
+    The same calculation the fit uses for ``result.scores``, applied to rows
+    the model was not fit on, so held-out children can be placed on the axes
+    without refitting.
+    """
+    X = np.asarray(X, dtype=float)
+    nodes, prior = _quadrature_grid(result.n_dims, result.n_quadrature)
+    _, posterior, _ = _e_step(X, np.ones(X.shape[0]), result.unrotated_slopes, result.intercepts, nodes, prior)
+    return (posterior @ nodes) @ result.rotation
+
+
 def latent_trait_pair_probabilities(result: LatentTraitResult) -> tuple[np.ndarray, np.ndarray]:
     """Model-implied P(x_j = 1) for each item and P(x_j = 1, x_k = 1) for each pair, by quadrature."""
     nodes, prior = _quadrature_grid(result.n_dims, result.n_quadrature)

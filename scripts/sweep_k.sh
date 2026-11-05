@@ -88,6 +88,7 @@ for K in "${KS[@]}"; do
     step "K=$K classes vs dimensions"      $PY scripts/12_dimensions.py "${common[@]}" --fits "$MAIN"
     step "K=$K bootstrap ($NBOOT)"         $PY scripts/06_bootstrap.py "${common[@]}" --n-boot "$NBOOT" --n-starts "$STARTS"
     step "K=$K replication checks on simulated data" $PY scripts/15_replication_calibration.py "${common[@]}" --n-starts "$STARTS"
+    step "K=$K held-out outcomes, pandemic years" $PY scripts/16_outcomes.py "${common[@]}" --n-starts "$STARTS"
     if [ ${#FAILED[@]} -eq 0 ]; then echo "complete" > "$DIR/STATUS"; else printf "failed: %s\n" "${FAILED[@]}" > "$DIR/STATUS"; fi
 done
 

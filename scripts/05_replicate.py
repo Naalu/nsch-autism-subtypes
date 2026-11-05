@@ -1,4 +1,4 @@
-"""Step 5 of 14. Do the classes come back in a different set of children?
+"""Step 5 of 16. Do the classes come back in a different set of children?
 
 Most published subtype studies cluster one sample once and stop. The classic
 failure is that the clusters describe that particular sample and vanish in

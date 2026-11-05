@@ -46,8 +46,8 @@ src/nsch_subtypes/            the package
   describe.py                 survey-weighted national shares with confidence intervals
   synthetic.py, plots.py      made-up data for tests; shared figure styling
 scripts/
-  01_select.py ... 15_replication_calibration.py   one pipeline step each (table below)
-  sweep_k.sh                  runs steps 4 to 15 at several K
+  01_select.py ... 16_outcomes.py   one pipeline step each (table below)
+  sweep_k.sh                  runs steps 4 to 16 at several K
   make_results_figures.py     draws reports/figures/results/ and writes reports/tables/
   make_data_overview.py, compare_backends.py       the data overview and the backend comparison
 reports/
@@ -70,7 +70,7 @@ uv sync --group dev
 make test                      # unit tests on synthetic data (under a minute)
 make smoke                     # every step once at tiny settings (about 5 minutes)
 make fit                       # step 3: latent class models K = 1 to 8 (about 5 minutes)
-make sweep                     # steps 4 to 15 at K = 4 to 8, then the figures (4 to 5 hours)
+make sweep                     # steps 4 to 16 at K = 4 to 8, then the figures (4 to 5 hours)
 make paper                     # build paper/main.pdf (needs LaTeX)
 make download                  # optional: rebuild the analysis table from the Census files (about 60 MB)
 ```
@@ -100,10 +100,11 @@ The survey can also be read through the [nsch](https://github.com/NAU-ASD3/nsch-
 | 13 Choose | `13_heldout_selection.py` | Held-out likelihood for every model on later years; K = the largest K whose classes all come back under resampling | |
 | 14 Calibrate | `14_shape_and_stability.py` | The stability and latent-shape checks on simulated data with no classes and with real classes, as a yardstick | |
 | 15 Calibrate | `15_replication_calibration.py` | The replication checks (steps 4, 5, 8, 9) on simulated data with no classes and with real classes | |
+| 16 Outcomes | `16_outcomes.py` | Step 7's test on three held-out outcomes (severity, forgone care, ER visits), scored on 2025 too; whether the class links changed in the pandemic years; the classes refit without 2020 and 2021 | Weighted rates by class |
 
-`make sweep` (or `scripts/sweep_k.sh 4 5`) runs steps 4 to 12 and 15 at each K into `results_k{K}/`, then steps 13 and 14 and `scripts/make_results_figures.py`.
+`make sweep` (or `scripts/sweep_k.sh 4 5`) runs steps 4 to 12, 15 and 16 at each K into `results_k{K}/`, then steps 13 and 14 and `scripts/make_results_figures.py`.
 
-Steps 1 to 3 are a complete project on their own. Steps 4, 5, 8, 9 and 10 are independent checks of the classes from step 3; step 6 is the stability check that also decides K; 11 and 12 ask whether the modeling choices and the class description itself hold up; 13 asks how much structure carries over to new children; 14 and 15 measure what the checks score when the answer is known. Step 7 turns the result into national numbers. Survey weights are used only to describe the classes (steps 7 and 8, and the weighted-fit check in 11), never to fit the main model.
+Steps 1 to 3 are a complete project on their own. Steps 4, 5, 8, 9 and 10 are independent checks of the classes from step 3; step 6 is the stability check that also decides K; 11 and 12 ask whether the modeling choices and the class description itself hold up; 13 asks how much structure carries over to new children; 14 and 15 measure what the checks score when the answer is known; 16 asks what the classes predict. Step 7 turns the result into national numbers. Survey weights are used only to describe the classes (steps 7 and 8, and the weighted-fit check in 11), never to fit the main model.
 
 The pass lines and the planned null result (the count test) were set in the project proposal on October 13, 2026, before any model was fit. The rule for K was set after BIC failed to settle; `docs/validation-checklist.md` explains both.
 

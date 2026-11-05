@@ -1,4 +1,4 @@
-"""Step 3 of 14. Fit the latent class model for K = 1 to 8.
+"""Step 3 of 16. Fit the latent class model for K = 1 to 8.
 
 This is the main model. Steps 4 to 12 check what comes out of it and step 13
 compares it with the alternatives and decides which K to report.

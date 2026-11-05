@@ -161,6 +161,18 @@ The replication checks (held-out years, the 2025 forward test, both age bands, k
 | `replication_calibration.csv` | One row per `data` (`continuum`, `{K} classes`, `real`), `replicate` and `check`: `ari` and `n` (children compared). The `real` rows are copied from `replicate.json`, `forward_2025.json`, `age_bands.json` and `crosscheck_kmeans.json` when those are on file. |
 | `replication_calibration.json` | The real values, the simulated minimum, median and maximum for each check, a one-line reading per check (whether the real ARI sits inside, below or above the continuum's range) and the settings. |
 
+### Step 16, `scripts/16_outcomes.py`
+
+The three held-out outcomes and the pandemic-years checks, at one K, written into the K folder. The rules were fixed before the first run (`docs/validation-checklist.md`, decision 5). Outcomes: `severity` (mild < moderate < severe), `forgone_care` (no < yes) and `er_visits` (none < one < two or more).
+
+| File | What is in it |
+|---|---|
+| `outcome_models_{outcome}.csv` | Step 7's model table for one outcome, adjusted for age, sex and survey year: `model`, `n_params`, `log_likelihood`, `bic`, `cv_log_loss`, `bic_vs_count`. |
+| `outcome_by_class_{outcome}.csv` | Weighted share of children at each level of the outcome within each class, with standard errors (`{level}`, `{level}_se`) and `n`. |
+| `outcome_by_period_{outcome}.csv` | The same per `period` (before 2016 to 2019, during 2020 to 2021, after 2022 to 2024). |
+| `outcome_heldout_2025.csv` | One row per `outcome` and `model`, fit on 2016 to 2024 and scored on the 2025 children: `n_test`, `test_log_loss`, `vs_count` (negative is better than count). |
+| `outcomes.json` | Per outcome: the planned test's verdicts and every model's BIC and log-loss, the 2025 scores, and the period test (likelihood-ratio statistic, `df`, `p_value`, `changed` at 0.05 / 3, the interaction terms). Under `without_pandemic_years`: the refit without 2020 and 2021 against the main classes (ARI with interval, class sizes, the largest condition-rate difference and where it is). |
+
 ## Running it, and how long it takes
 
 On a recent laptop:
@@ -173,6 +185,7 @@ On a recent laptop:
 | one K in the sweep, steps 4 to 12 | 10 to 15 minutes |
 | one K's bootstrap (step 6, 200 resamples) | 20 to 40 minutes |
 | `make calibrate` (steps 14 and 15) | about an hour, plus 10 to 15 minutes for step 15 |
+| `make outcomes` (step 16) | 5 to 10 minutes |
 | `make sweep` (K = 4 to 8) | 4 to 5 hours, mostly the bootstraps |
 
 The sweep keeps going when a step fails, logs everything to `results/sweep.log`, and writes a `STATUS` file into each K folder. Steps 13 and 14 and the figures run at the end. To rerun only those after a sweep, use `make choose calibrate figures`.

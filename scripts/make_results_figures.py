@@ -1,6 +1,6 @@
 """The results figures and summary tables for the checkpoint and the paper.
 
-Reads the outputs of steps 3 to 14 and draws the figures. No analysis happens
+Reads the outputs of steps 3 to 16 and draws the figures. No analysis happens
 here beyond naming the classes and arranging numbers that the steps already
 computed. Figure titles describe what is plotted; conclusions belong in the
 text, so that a rerun with different numbers cannot produce a figure whose
@@ -22,6 +22,9 @@ the parent folder)::
     map.png                      children in the two-dimensional space, with condition directions and classes
     figure1_map.png              the paper's Figure 1: one cloud on the two named axes, classes as regions, cut lines
     severity_map.png             share rated severe in each region of the map
+    forgone_care_map.png, er_visits_map.png   the same for going without needed care and for any ER visit
+    outcomes_by_class.png        each held-out outcome by class, with 95% intervals
+    outcomes_by_period.png       each held-out outcome by class before, during and after 2020-21
     checks_k{K}.png              every agreement check at the chosen K with intervals and simulated ranges
     latent_density.png           estimated distribution of positions: real data against simulated continuum and classes
     stability_vs_simulation.png  least stable class at each K, real data against simulated continuum and classes
@@ -293,8 +296,8 @@ def draw_figure1(
     plt.close(fig)
 
 
-def draw_severity_map(positions_path: Path, table: pd.DataFrame, path: Path) -> None:
-    """Share of children rated severe in each region of the map: severity follows position, not a class border."""
+def draw_outcome_map(positions_path: Path, table: pd.DataFrame, has_outcome: np.ndarray, answered: np.ndarray, what: str, vmax: float, path: Path) -> None:
+    """Share of children with an outcome in each region of the map, so a reader can see whether it follows position or class border."""
     loaded = _load_positions(positions_path, table)
     if loaded is None:
         return
@@ -303,32 +306,105 @@ def draw_severity_map(positions_path: Path, table: pd.DataFrame, path: Path) -> 
     if roles == ["psychiatric", "developmental-language"]:
         xy, slopes = xy[:, ::-1], slopes[:, ::-1]
     names = axis_names(slopes, flags)
-    rated = table["severity"].notna().to_numpy()
-    severe = (table["severity"] == "severe").to_numpy().astype(float)
     fig, ax = plt.subplots(figsize=(6.6, 5.6))
     image = ax.hexbin(
-        xy[rated, 0],
-        xy[rated, 1],
-        C=severe[rated],
+        xy[answered, 0],
+        xy[answered, 1],
+        C=has_outcome[answered].astype(float),
         reduce_C_function=np.mean,
         gridsize=16,
         extent=(-3.5, 3.5, -3.5, 3.5),
         mincnt=15,
         cmap="Oranges",
         vmin=0,
-        vmax=0.5,
+        vmax=vmax,
         linewidths=0.2,
         edgecolors="white",
     )
-    fig.colorbar(image, ax=ax, fraction=0.04, pad=0.02, label="share rated severe (cells with 15 or more children)")
+    fig.colorbar(image, ax=ax, fraction=0.04, pad=0.02, label=f"share {what} (cells with 15 or more children)")
     ax.set_xlim(-3.5, 3.5)
     ax.set_ylim(-3.5, 3.5)
     ax.set_aspect("equal")
     ax.set_xlabel(names[0], fontsize=8.5)
     ax.set_ylabel(names[1], fontsize=8.5)
-    ax.set_title(f"Parent-rated severity across the map ({rated.sum():,} children with a rating)", fontsize=8.5, loc="left")
+    ax.set_title(f"Share {what} across the map ({answered.sum():,} children with an answer)", fontsize=8.5, loc="left")
     tidy(ax)
     fig.tight_layout()
+    fig.savefig(path, dpi=170)
+    plt.close(fig)
+
+
+# The level of each held-out outcome that the outcome figures show, and how to say it.
+OUTCOME_SHOWN = {
+    "severity": (lambda column: column == "severe", "rated severe", 0.5),
+    "forgone_care": (lambda column: column == "yes", "who went without needed care", 0.4),
+    "er_visits": (lambda column: column.isin(["one", "two or more"]), "with an ER visit", 0.5),
+}
+PERIOD_SPANS = {"before\n2016-19": range(2016, 2020), "during\n2020-21": range(2020, 2022), "after\n2022-24": range(2022, 2025)}
+
+
+def draw_outcomes_by_class(table: pd.DataFrame, labels: np.ndarray, order: list[int], label_of: dict, colors: dict, path: Path) -> None:
+    """One panel per held-out outcome: the weighted share in each class, with 95% intervals."""
+    from nsch_subtypes.describe import design_strata, weighted_mean_with_se
+
+    present = [o for o in OUTCOME_SHOWN if o in table.columns]
+    strata, weights = design_strata(table), table["weight"].to_numpy()
+    fig, axes = plt.subplots(1, len(present), figsize=(3.3 * len(present), 0.5 * len(order) + 1.6), sharey=True)
+    for ax, outcome in zip(np.atleast_1d(axes), present, strict=True):
+        test, what, _ = OUTCOME_SHOWN[outcome]
+        answered = table[outcome].notna().to_numpy()
+        has = test(table[outcome]).to_numpy()
+        for i, c in enumerate(order):
+            share, se = weighted_mean_with_se(has, weights, strata, domain=(labels == c) & answered)
+            ax.errorbar(share, i, xerr=1.96 * se, fmt="o", color=colors[c], ms=6, capsize=2, lw=1.2)
+            ax.text(share + 1.96 * se + 0.012, i, f"{share:.0%}", ha="left", va="center", fontsize=7.5, color=colors[c])
+        overall, _ = weighted_mean_with_se(has, weights, strata, domain=answered)
+        ax.axvline(overall, color=GRAY, lw=0.8, ls=":")
+        ax.set_xlim(0, max(0.45, ax.get_xlim()[1]))
+        ax.set_title(f"share {what}", fontsize=8.5, loc="left")
+        ax.set_xlabel("weighted share (dotted: all children)", fontsize=7.5)
+        tidy(ax)
+    first = np.atleast_1d(axes)[0]
+    first.set_yticks(range(len(order)))
+    first.set_yticklabels([label_of[c] for c in order], fontsize=8)
+    for tick, c in zip(first.get_yticklabels(), order, strict=True):
+        tick.set_color(colors[c])
+    first.invert_yaxis()
+    fig.tight_layout()
+    fig.savefig(path, dpi=170)
+    plt.close(fig)
+
+
+def draw_outcomes_by_period(table: pd.DataFrame, labels: np.ndarray, order: list[int], label_of: dict, colors: dict, path: Path) -> None:
+    """Each held-out outcome by class before, during and after the pandemic years, with 95% intervals."""
+    from nsch_subtypes.describe import design_strata, weighted_mean_with_se
+
+    present = [o for o in OUTCOME_SHOWN if o in table.columns]
+    strata, weights = design_strata(table), table["weight"].to_numpy()
+    fig, axes = plt.subplots(1, len(present), figsize=(3.4 * len(present), 3.4), sharey=False)
+    x = np.arange(len(PERIOD_SPANS))
+    for ax, outcome in zip(np.atleast_1d(axes), present, strict=True):
+        test, what, _ = OUTCOME_SHOWN[outcome]
+        answered = table[outcome].notna().to_numpy()
+        has = test(table[outcome]).to_numpy()
+        for j, c in enumerate(order):
+            points, errors = [], []
+            for span in PERIOD_SPANS.values():
+                domain = (labels == c) & answered & table["year"].isin(list(span)).to_numpy()
+                share, se = weighted_mean_with_se(has, weights, strata, domain=domain)
+                points.append(share)
+                errors.append(1.96 * se)
+            offset = (j - (len(order) - 1) / 2) * 0.06
+            ax.errorbar(x + offset, points, yerr=errors, color=colors[c], marker="o", ms=4, lw=1.4, capsize=2, label=label_of[c])
+        ax.set_xticks(x)
+        ax.set_xticklabels(list(PERIOD_SPANS), fontsize=7.5)
+        ax.set_ylim(0, None)
+        ax.set_title(f"share {what}", fontsize=8.5, loc="left")
+        tidy(ax)
+    np.atleast_1d(axes)[0].set_ylabel("weighted share")
+    handles, names = np.atleast_1d(axes)[0].get_legend_handles_labels()
+    fig.legend(handles, names, frameon=False, fontsize=7.5, ncol=len(order), loc="lower center")
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
     fig.savefig(path, dpi=170)
     plt.close(fig)
 
@@ -786,12 +862,19 @@ def main() -> None:
         draw_map(main_dir / "positions_2d.npz", table, fit, order, label_of, colors, out_dir / "map.png")
         cut_points = load_json(kdir / "dimensions.json").get("quadrants", {}).get("cut_points")
         draw_figure1(main_dir / "positions_2d.npz", table, fit, order, label_of, colors, shares, cut_points, out_dir / "figure1_map.png")
-        draw_severity_map(main_dir / "positions_2d.npz", table, out_dir / "severity_map.png")
+        for outcome, (test, what, vmax) in OUTCOME_SHOWN.items():
+            if outcome in table.columns:
+                answered = table[outcome].notna().to_numpy()
+                has = test(table[outcome]).to_numpy()
+                name = "severity_map.png" if outcome == "severity" else f"{outcome}_map.png"
+                draw_outcome_map(main_dir / "positions_2d.npz", table, has, answered, what, vmax, out_dir / name)
     if (main_dir / "latent_density.npz").exists():
         draw_latent_density(main_dir / "latent_density.npz", main_dir / "latent_density.csv", main_dir / "positions_2d.npz", out_dir / "latent_density.png")
     if (main_dir / "stability_calibration.csv").exists() and (main_dir / "stability_by_k.csv").exists():
         draw_stability_vs_simulation(main_dir / "stability_by_k.csv", main_dir / "stability_calibration.csv", out_dir / "stability_vs_simulation.png")
     draw_agreement_by_confidence(kdir, out_dir / "agreement_by_confidence.png")
+    draw_outcomes_by_class(table, fit.labels, order, label_of, colors, out_dir / "outcomes_by_class.png")
+    draw_outcomes_by_period(table, fit.labels, order, label_of, colors, out_dir / "outcomes_by_period.png")
     draw_checks_dot_plot(kdir, k, out_dir / f"checks_k{k}.png")
     if (kdir / "replication_calibration.csv").exists():
         draw_replication_vs_simulation(kdir / "replication_calibration.csv", out_dir / "replication_vs_simulation.png")
@@ -803,6 +886,9 @@ def main() -> None:
         kdir / "shares_by_year.csv",
         kdir / "loadings_2d.csv",
         kdir / "model_comparison.csv",
+        kdir / "outcome_heldout_2025.csv",
+        *sorted(kdir.glob("outcome_models_*.csv")),
+        *sorted(kdir.glob("outcome_by_period_*.csv")),
         main_dir / "stability_by_k.csv",
         main_dir / "k_rule_sensitivity.csv",
         main_dir / "heldout_selection.csv",

@@ -11,7 +11,8 @@ something. This module holds the tools for four checks:
 2. Applying a fitted model to new children without refitting (``class_probabilities``).
 3. Stability under resampling (bootstrap Jaccard, step 6).
 4. Whether the classes tell us anything about an outcome they never saw,
-   beyond what a simple count of conditions already tells us (step 7).
+   beyond what a simple count of conditions already tells us (steps 7 and 16),
+   and whether that link changed across periods of survey years (step 16).
 
 Pass lines, fixed in the proposal before any model was fit
 ----------------------------------------------------------
@@ -363,36 +364,107 @@ def shuffle_each_column(X: np.ndarray, seed: int = 0) -> np.ndarray:
 SEVERITY_ORDER = ["mild", "moderate", "severe"]
 
 
-def severity_count_vs_class(
+def _outcome_frame(table: pd.DataFrame, outcome: str, levels: list[str], labels: np.ndarray):
+    """The children with an answer for ``outcome``, their class, and the outcome as an ordered categorical."""
+    keep = table[outcome].notna().to_numpy()
+    frame = table[keep].reset_index(drop=True).copy()
+    frame["cls"] = np.asarray(labels)[keep]
+    response = pd.Series(pd.Categorical(frame[outcome], categories=levels, ordered=True), name=outcome)
+    return keep, frame, response
+
+
+def _outcome_designs(
+    frame: pd.DataFrame,
+    keep: np.ndarray,
+    flags: list[str],
+    n_classes: int,
+    responsibilities: np.ndarray | None,
+    factor_scores: np.ndarray | None,
+    years: list[int] | None,
+    age_center: float,
+) -> dict[str, pd.DataFrame]:
+    """The predictor sets every outcome model compares, built the same way for fitting and for scoring new children.
+
+    ``years`` is the list of survey years the model was fit on. When given,
+    survey year enters as a categorical adjustment (one indicator per year
+    after the first); a child from a later year than any in the list (2025,
+    scored with a model fit on 2016 to 2024) is given the most recent year's
+    effect. ``age_center`` is the fitting sample's mean age, so a model's
+    intercepts mean the same thing when it scores new children.
+    """
+    count = frame[flags].sum(axis=1).rename("count").to_frame()
+    adjustments = pd.DataFrame({"age_c": frame["age"] - age_center, "female": (frame["sex"] == "female").astype(float)})
+    if years is not None:
+        year = pd.Categorical(frame["year"].clip(upper=max(years)), categories=sorted(years))
+        adjustments = pd.concat([adjustments, pd.get_dummies(year, prefix="year", drop_first=True).astype(float)], axis=1)
+    # Fixed categories, so a class with no children in some subset still gets its column.
+    cls = pd.Categorical(frame["cls"], categories=range(n_classes))
+    class_dummies = pd.get_dummies(cls, prefix="class", drop_first=True).astype(float)
+
+    designs = {
+        "count": pd.concat([adjustments, count], axis=1),
+        "class": pd.concat([adjustments, class_dummies], axis=1),
+        "both": pd.concat([adjustments, count, class_dummies], axis=1),
+    }
+    if responsibilities is not None:
+        probs = pd.DataFrame(responsibilities[keep][:, 1:], columns=[f"p_class_{c}" for c in range(1, responsibilities.shape[1])])
+        designs["class probabilities"] = pd.concat([adjustments, probs], axis=1)
+        designs["count + class probabilities"] = pd.concat([adjustments, count, probs], axis=1)
+    if factor_scores is not None:
+        scores = pd.DataFrame(factor_scores[keep], columns=[f"score_{d + 1}" for d in range(factor_scores.shape[1])])
+        designs["factor scores"] = pd.concat([adjustments, scores], axis=1)
+        designs["factor scores + class"] = pd.concat([adjustments, scores, class_dummies], axis=1)
+    designs["all 18 flags"] = pd.concat([adjustments, frame[flags].astype(float)], axis=1)
+    return designs
+
+
+def _fit_ordinal(response: pd.Series, design: pd.DataFrame):
+    """Ordinal logistic regression; with two levels this is ordinary logistic regression."""
+    from statsmodels.miscmodels.ordinal_model import OrderedModel
+
+    return OrderedModel(response.reset_index(drop=True), design.reset_index(drop=True), distr="logit").fit(method="bfgs", disp=False, maxiter=1000)
+
+
+def _log_loss(fitted, design: pd.DataFrame, response: pd.Series) -> float:
+    """Average negative log probability a fitted model gives to the true level."""
+    predicted = np.asarray(fitted.model.predict(fitted.params, exog=design.to_numpy()))
+    truth = response.cat.codes.to_numpy()
+    return float(-np.log(np.clip(predicted[np.arange(len(truth)), truth], 1e-12, 1)).mean())
+
+
+def outcome_count_vs_class(
     table: pd.DataFrame,
+    outcome: str,
+    levels: list[str],
     labels: np.ndarray,
     flags: list[str],
     n_folds: int = 5,
     seed: int = 0,
     responsibilities: np.ndarray | None = None,
     factor_scores: np.ndarray | None = None,
+    adjust_for_year: bool = False,
 ) -> pd.DataFrame:
-    """Do the classes predict parent-rated severity better than counting conditions?
+    """Do the classes predict an outcome they never saw better than counting conditions?
 
-    This is the project's planned null test. A skeptic would say: of course
-    children with more conditions are rated more severe, and your "classes"
-    are just low, medium and high condition counts with new names. The
-    planned criterion, written down before any model was fit, was that the
-    classes must add information beyond the count. Every model is an ordinal
-    logistic regression of severity (mild < moderate < severe) adjusted for
-    age and sex:
+    A skeptic would say: of course children with more conditions are rated
+    more severe (or go without care more often, or visit the emergency room
+    more), and your "classes" are just low, medium and high condition counts
+    with new names. Every model here is an ordinal logistic regression of the
+    outcome's levels in order (``levels``, lowest first; with two levels it is
+    a logistic regression), adjusted for age and sex, and for survey year
+    when ``adjust_for_year`` is set:
 
     - ``count``: number of conditions
     - ``class``: which class the child is in (most likely class)
     - ``both``: count and class together. **The planned test is ``both``
       against ``count``.**
 
-    Comparators added after the first results, so the classes are judged
-    against the other ways of summarizing the same 18 flags:
+    Comparators, so the classes are judged against the other ways of
+    summarizing the same 18 flags:
 
     - ``class probabilities``: the child's probability of each class instead
-      of a single label, so the quarter of children near a boundary are not
-      forced into one class (given ``responsibilities``)
+      of a single label, so children near a boundary are not forced into one
+      class (given ``responsibilities``)
     - ``count + class probabilities``
     - ``factor scores``: the child's two positions in the continuous model
       (given ``factor_scores``)
@@ -401,56 +473,26 @@ def severity_count_vs_class(
 
     Two scores per model, both lower-is-better: BIC, and five-fold
     cross-validated log-loss (fit on four fifths, measure how surprised the
-    model is by the true severity of the other fifth, average over folds).
+    model is by the true outcome of the other fifth, average over folds).
 
-    Children whose parent did not rate severity are left out.
+    Children with no answer for the outcome are left out.
     """
-    from statsmodels.miscmodels.ordinal_model import OrderedModel
-
-    keep = table["severity"].notna().to_numpy()
-    frame = table[keep].reset_index(drop=True).copy()
-    frame["cls"] = labels[keep]
-    severity = pd.Series(pd.Categorical(frame["severity"], categories=SEVERITY_ORDER, ordered=True), name="severity")
-
-    frame["count"] = frame[flags].sum(axis=1)
-    frame["female"] = (frame["sex"] == "female").astype(float)
-    frame["age_c"] = frame["age"] - frame["age"].mean()  # centered age, so the intercepts are interpretable
-    adjustments = frame[["age_c", "female"]]
-    class_dummies = pd.get_dummies(frame["cls"], prefix="class", drop_first=True).astype(float)
-
-    designs = {
-        "count": pd.concat([adjustments, frame[["count"]]], axis=1),
-        "class": pd.concat([adjustments, class_dummies], axis=1),
-        "both": pd.concat([adjustments, frame[["count"]], class_dummies], axis=1),
-    }
-    if responsibilities is not None:
-        probs = pd.DataFrame(responsibilities[keep][:, 1:], columns=[f"p_class_{c}" for c in range(1, responsibilities.shape[1])])
-        designs["class probabilities"] = pd.concat([adjustments, probs], axis=1)
-        designs["count + class probabilities"] = pd.concat([adjustments, frame[["count"]], probs], axis=1)
-    if factor_scores is not None:
-        scores = pd.DataFrame(factor_scores[keep], columns=[f"score_{d + 1}" for d in range(factor_scores.shape[1])])
-        designs["factor scores"] = pd.concat([adjustments, scores], axis=1)
-        designs["factor scores + class"] = pd.concat([adjustments, scores, class_dummies], axis=1)
-    designs["all 18 flags"] = pd.concat([adjustments, frame[flags].astype(float)], axis=1)
+    keep, frame, response = _outcome_frame(table, outcome, levels, labels)
+    n_classes = int(np.max(labels)) + 1
+    years = sorted(frame["year"].unique().tolist()) if adjust_for_year else None
+    designs = _outcome_designs(frame, keep, flags, n_classes, responsibilities, factor_scores, years, frame["age"].mean())
 
     rng = np.random.default_rng(seed)
     fold_of_child = rng.permutation(len(frame)) % n_folds
 
     results = []
     for name, design in designs.items():
-        full_fit = OrderedModel(severity, design, distr="logit").fit(method="bfgs", disp=False, maxiter=1000)
+        full_fit = _fit_ordinal(response, design)
         fold_losses = []
         for fold in range(n_folds):
             train, test = fold_of_child != fold, fold_of_child == fold
-            fold_fit = OrderedModel(
-                severity[train].reset_index(drop=True),
-                design[train].reset_index(drop=True),
-                distr="logit",
-            ).fit(method="bfgs", disp=False, maxiter=1000)
-            predicted = np.asarray(fold_fit.model.predict(fold_fit.params, exog=design[test].to_numpy()))
-            true_level = severity.cat.codes.to_numpy()[test]
-            probability_of_truth = predicted[np.arange(len(true_level)), true_level]
-            fold_losses.append(-np.log(np.clip(probability_of_truth, 1e-12, 1)).mean())
+            fold_fit = _fit_ordinal(response[train], design[train])
+            fold_losses.append(_log_loss(fold_fit, design[test], response[test].reset_index(drop=True)))
         results.append(
             {
                 "model": name,
@@ -464,3 +506,107 @@ def severity_count_vs_class(
     count_bic = out.loc[out["model"] == "count", "bic"].item()
     out["bic_vs_count"] = out["bic"] - count_bic
     return out
+
+
+def severity_count_vs_class(
+    table: pd.DataFrame,
+    labels: np.ndarray,
+    flags: list[str],
+    n_folds: int = 5,
+    seed: int = 0,
+    responsibilities: np.ndarray | None = None,
+    factor_scores: np.ndarray | None = None,
+) -> pd.DataFrame:
+    """The planned null test as first written: parent-rated severity, adjusted for age and sex only.
+
+    See :func:`outcome_count_vs_class`, which this calls with
+    ``outcome="severity"`` and no year adjustment.
+    """
+    return outcome_count_vs_class(
+        table, "severity", SEVERITY_ORDER, labels, flags, n_folds=n_folds, seed=seed, responsibilities=responsibilities, factor_scores=factor_scores
+    )
+
+
+def outcome_heldout_loss(
+    train_table: pd.DataFrame,
+    train_labels: np.ndarray,
+    test_table: pd.DataFrame,
+    test_labels: np.ndarray,
+    outcome: str,
+    levels: list[str],
+    flags: list[str],
+    train_responsibilities: np.ndarray | None = None,
+    test_responsibilities: np.ndarray | None = None,
+    train_scores: np.ndarray | None = None,
+    test_scores: np.ndarray | None = None,
+    adjust_for_year: bool = True,
+) -> pd.DataFrame:
+    """Fit every outcome model on one set of children and score it on another (2016 to 2024, then 2025).
+
+    The test children's classes, class probabilities and factor scores come
+    from the frozen models, never from a refit. Returns each model's log-loss
+    on the test children (lower is better) and its difference from ``count``.
+    """
+    train_keep, train_frame, train_response = _outcome_frame(train_table, outcome, levels, train_labels)
+    test_keep, test_frame, test_response = _outcome_frame(test_table, outcome, levels, test_labels)
+    n_classes = int(max(np.max(train_labels), np.max(test_labels))) + 1
+    years = sorted(train_frame["year"].unique().tolist()) if adjust_for_year else None
+    age_center = train_frame["age"].mean()
+    train_designs = _outcome_designs(train_frame, train_keep, flags, n_classes, train_responsibilities, train_scores, years, age_center)
+    test_designs = _outcome_designs(test_frame, test_keep, flags, n_classes, test_responsibilities, test_scores, years, age_center)
+    rows = []
+    for name, design in train_designs.items():
+        fitted = _fit_ordinal(train_response, design)
+        rows.append({"model": name, "n_test": len(test_frame), "test_log_loss": _log_loss(fitted, test_designs[name], test_response)})
+    out = pd.DataFrame(rows)
+    out["vs_count"] = out["test_log_loss"] - out.loc[out["model"] == "count", "test_log_loss"].item()
+    return out
+
+
+def outcome_period_test(
+    table: pd.DataFrame,
+    outcome: str,
+    levels: list[str],
+    labels: np.ndarray,
+    flags: list[str],
+    periods: dict[str, range],
+) -> dict:
+    """Did the link between class and an outcome change across periods of survey years?
+
+    The base model is count plus class, adjusted for age, sex and survey year.
+    The full model adds one term per class (after the first) per period
+    (after the first): the class-by-period interaction. Period itself needs
+    no term of its own, because the survey-year indicators already absorb it.
+    The two are compared by a likelihood-ratio test.
+    """
+    from scipy.stats import chi2
+
+    keep, frame, response = _outcome_frame(table, outcome, levels, labels)
+    n_classes = int(np.max(labels)) + 1
+    years = sorted(frame["year"].unique().tolist())
+    base = _outcome_designs(frame, keep, flags, n_classes, None, None, years, frame["age"].mean())["both"]
+
+    names = list(periods)
+    period = pd.Series(pd.NA, index=frame.index, dtype="object")
+    for name, span in periods.items():
+        period[frame["year"].isin(list(span))] = name
+    interactions = {}
+    for k in range(1, n_classes):
+        for name in names[1:]:
+            interactions[f"class_{k} x {name}"] = ((frame["cls"] == k) & (period == name)).astype(float)
+    full = pd.concat([base, pd.DataFrame(interactions)], axis=1)
+
+    base_fit, full_fit = _fit_ordinal(response, base), _fit_ordinal(response, full)
+    statistic = 2.0 * (full_fit.llf - base_fit.llf)
+    df = full.shape[1] - base.shape[1]
+    return {
+        "outcome": outcome,
+        "n": int(len(frame)),
+        "periods": {name: [min(span), max(span)] for name, span in periods.items()},
+        "lr_statistic": float(statistic),
+        "df": int(df),
+        "p_value": float(chi2.sf(statistic, df)),
+        "bic_base": float(base_fit.bic),
+        "bic_with_interaction": float(full_fit.bic),
+        "interaction_terms": {name: float(full_fit.params[name]) for name in interactions},
+    }
