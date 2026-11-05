@@ -72,6 +72,8 @@ make sweep                     # steps 4 to 15 at K = 4 to 8, then the figures (
 make download                  # optional: rebuild the analysis table from the Census files (about 60 MB)
 ```
 
+Without uv, `requirements.txt` pins the same versions as `uv.lock`: `python -m venv .venv`, activate it, `pip install -r requirements.txt -e .`, then run the pipeline targets with `make fit PY=python` and so on. Regenerate it after changing dependencies with `uv export --format requirements-txt --no-hashes --no-dev --no-emit-project -o requirements.txt`.
+
 `data/processed/analysis.parquet` is committed, so nothing needs the download. `make` uses our from-scratch NumPy code by default; add `BACKEND=reference` to run the StepMix / SciPy / scikit-learn versions instead, which write to `results_reference/` so they never overwrite the main run. Every script takes `--help`. Outputs go to `results/` and `results_k{K}/`; `docs/outputs.md` lists them.
 
 The survey can also be read through the [nsch](https://github.com/NAU-ASD3/nsch-py) package: `uv sync --extra nsch`, then `scripts/01_select.py --loader nsch`. That path is experimental until nsch publishes a release.
