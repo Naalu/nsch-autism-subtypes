@@ -27,7 +27,7 @@ def config():
 
 def test_config_loads_and_has_what_we_need(config):
     assert config.min_prevalence == 0.01
-    assert {"year", "household", "age", "sex", "weight", "stratum", "state", "asd_current", "asd_severity"} <= set(config.keys)
+    assert {"year", "household", "age", "sex", "weight", "stratum", "state", "asd_current", "asd_severity", "forgone_care", "er_visits"} <= set(config.keys)
     names = [condition.name for condition in config.conditions]
     assert len(names) == len(set(names)), "condition names must be unique"
     assert "adhd" in [condition.name for condition in config.included]
@@ -87,6 +87,8 @@ def test_prevalence_rule_drops_rare_flags_and_records_everything(config):
         "k2q35a": 1,
         "k2q35b": 1,
         "k2q35c": 1,
+        "k4q27": np.where(np.arange(n) % 2 == 0, 1, 2),
+        "hospitaler": np.arange(n) % 4 + 1,  # codes 1 to 4, as in 2022 on
     }
     for condition in config.included:
         share_with_it = 0.0 if condition.name == "cystic_fibrosis" else 0.5
@@ -98,6 +100,9 @@ def test_prevalence_rule_drops_rare_flags_and_records_everything(config):
     kept, codebook = apply_prevalence_rule(table, config)
 
     assert "cystic_fibrosis" not in kept and "adhd" in kept
+    assert set(table["forgone_care"]) == {"yes", "no"}
+    # 2022 on splits "two or more" into 2-3 and 4+; both must land in the level every year shares.
+    assert table["er_visits"].value_counts().to_dict() == {"two or more": 250, "none": 125, "one": 125}
     assert set(codebook["flag"]) == {condition.name for condition in config.conditions}, "codebook lists every condition, kept or not"
     assert codebook.loc[codebook["flag"] == "allergies", "kept"].item() == False  # noqa: E712
 
