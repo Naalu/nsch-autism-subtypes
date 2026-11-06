@@ -1,6 +1,6 @@
 # Paper outline
 
-Working title: Two axes, not four boxes: co-occurring conditions in a national sample of autistic children replicate as a continuum
+Working title: Co-occurring conditions in a national sample of autistic children vary along two continuous axes
 
 Alternatives: Four profiles on two axes: what replicates when co-occurring conditions in a national sample of autistic children are clustered. Or: Checking autism subtypes against a national survey: what replicates and what does not
 
@@ -70,7 +70,7 @@ Held-out years 0.71, 2025 0.79 with shares (`reports/figures/results/shares_pool
 - The post hoc K rule, said up front. The 2025 test as confirmatory.
 - Future work: a factor mixture model, which allows classes and continuous variation within them.
 - Limitations: parent report and access to care; one observation per child, so no temporal or predictive validation; entropy 0.72; the 8.4% dropped; "currently has" wording; the proposal's hierarchical method failing.
-- What a clinician can take from it: two dials, not four boxes; severity ratings track the developmental dial.
+- What a clinician can take from it: place a child on two dials; severity ratings track the developmental dial.
 
 ## 6. Reproducibility (half page)
 
