@@ -14,7 +14,7 @@ This project asks the question on a national survey instead: ten years of the Na
 
 We also fit a model with no groups, in which children vary along a few continuous scales, and ask which description the data prefer. And because a partition of a smooth continuum can also come back in new children, we run every check on simulated data with and without real groups, to see what a pass can and cannot show.
 
-The short answer: two axes, not four boxes. Four broad profiles, the combinations of high and low on a developmental-language axis and a psychiatric axis, come back in later years, in 2025 and under resampling, but only as well as the same cut of a smooth continuum would. The continuous model fits better and predicts new years as well as eight classes. Parent-rated severity rises along the developmental axis and does not jump at the class borders.
+The short answer: the conditions vary along two continuous axes. Four broad profiles, the combinations of high and low on a developmental-language axis and a psychiatric axis, come back in later years, in 2025 and under resampling, but only as well as the same cut of a smooth continuum would. The continuous model fits better and predicts new years as well as eight classes. Parent-rated severity rises along the developmental axis and does not jump at the class borders.
 
 ![Every child on the two axes, colored by most likely class; the classes are the quadrants of one cloud](reports/figures/results/figure1_map.png)
 
