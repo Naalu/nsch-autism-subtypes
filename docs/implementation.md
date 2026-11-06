@@ -89,6 +89,7 @@ What the tests check (`tests/test_latent_trait.py`): on data simulated from know
 | `05` to `11`, `13`, `14` | `fit_lca` for every refit | yes |
 | `12_dimensions.py`, `13_heldout_selection.py`, `14_shape_and_stability.py`, `15_replication_calibration.py` | `fit_latent_trait` (ours only) | for the class fits |
 | `15_replication_calibration.py` | `fit_lca` and `cluster_kmeans` on simulated data | yes |
+| `16_outcomes.py` | `fit_latent_trait` for the axis scores (ours only); `fit_lca` for the refit without 2020 and 2021 | yes |
 
 Two pieces use libraries by design whatever the backend: the survey-weighted refit in step 11 (StepMix, which takes weights) and the six alternative methods in step 4.
 

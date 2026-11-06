@@ -1,4 +1,4 @@
-"""Step 13 of 14. How much structure is there, and which K do we report?
+"""Step 13 of 16. How much structure is there, and which K do we report?
 
 Why this step exists
 --------------------

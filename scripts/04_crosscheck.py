@@ -1,4 +1,4 @@
-"""Step 4 of 14. Does a second clustering method, with no probability model, find the same groups?
+"""Step 4 of 16. Does a second clustering method, with no probability model, find the same groups?
 
 What happens here
 -----------------

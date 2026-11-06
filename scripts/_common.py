@@ -1,6 +1,6 @@
 """Small helpers shared by the numbered scripts: where files live, command-line flags, loading, saving.
 
-The numbered scripts are meant to be read in order (01 to 15). Each one is
+The numbered scripts are meant to be read in order (01 to 16). Each one is
 short and does one job; the shared bits are here so the scripts stay short.
 """
 

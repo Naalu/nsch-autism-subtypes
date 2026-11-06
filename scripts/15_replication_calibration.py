@@ -1,4 +1,4 @@
-"""Step 15 of 15. What do the replication checks score when there are no groups to find?
+"""Step 15 of 16. What do the replication checks score when there are no groups to find?
 
 Why this step exists
 --------------------

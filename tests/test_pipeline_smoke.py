@@ -73,6 +73,7 @@ def test_every_script_runs_at_tiny_settings(tmp_path: Path, backend: str) -> Non
     step12_settings = ("--d-max", "2", "--sim-replicates", "1", "--sim-k-max", "2", "--n-boot-slopes", "2")
     run("12_dimensions.py", *selected_k_arguments, *small_fit_arguments, "--fits", main_results, *step12_settings)
     run("15_replication_calibration.py", *selected_k_arguments, *small_fit_arguments, "--replicates", "1", "--kmeans-starts", "2", "--kmeans-seeds", "1")
+    run("16_outcomes.py", *selected_k_arguments, *small_fit_arguments)
 
     for name in (
         "crosscheck_kmeans.json",
@@ -86,6 +87,8 @@ def test_every_script_runs_at_tiny_settings(tmp_path: Path, backend: str) -> Non
         "robustness.json",
         "model_comparison.csv",
         "replication_calibration.csv",
+        "outcomes.json",
+        "outcome_heldout_2025.csv",
     ):
         assert (results_for_k / name).exists(), f"{name} was not written"
 

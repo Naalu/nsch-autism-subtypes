@@ -155,6 +155,32 @@ def severity_by_class(table: pd.DataFrame, labels: np.ndarray) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def outcome_by_class(table: pd.DataFrame, labels: np.ndarray, outcome: str, levels: list[str], rows_mask: np.ndarray | None = None) -> pd.DataFrame:
+    """Weighted share of children at each level of ``outcome`` within each class, with standard errors.
+
+    Like :func:`severity_by_class`, for any held-out outcome. Children with no
+    answer for the outcome are left out of every class. ``rows_mask`` limits
+    the table to some children (one period of survey years, say) while the
+    standard errors still use the full design.
+    """
+    strata = design_strata(table)
+    weights = table["weight"].to_numpy()
+    answered = table[outcome].notna().to_numpy()
+    if rows_mask is not None:
+        answered = answered & np.asarray(rows_mask)
+    rows = []
+    for k in sorted(np.unique(labels)):
+        in_class = (labels == k) & answered
+        row = {"class": int(k), "n": int(in_class.sum())}
+        for level in levels:
+            is_level = (table[outcome] == level).to_numpy()
+            share, se = weighted_mean_with_se(is_level, weights, strata, domain=in_class)
+            row[level] = share
+            row[f"{level}_se"] = se
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
 def demographics_by_class(table: pd.DataFrame, labels: np.ndarray) -> pd.DataFrame:
     """Weighted mean age and share female within each class, with standard errors."""
     strata = design_strata(table)

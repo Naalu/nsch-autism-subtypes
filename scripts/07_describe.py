@@ -1,4 +1,4 @@
-"""Step 7 of 14. Describe the classes in plain numbers, and run the count-vs-class test.
+"""Step 7 of 16. Describe the classes in plain numbers, and run the count-vs-class test.
 
 What happens here
 -----------------

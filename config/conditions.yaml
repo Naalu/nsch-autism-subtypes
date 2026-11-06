@@ -226,3 +226,6 @@ keys:
   asd_ever: k2q35a
   asd_current: k2q35b
   asd_severity: k2q35c     # 1 = mild, 2 = moderate, 3 = severe (parent-rated)
+  forgone_care: k4q27      # needed health care in the past 12 months but did not get it: 1 = yes, 2 = no
+  er_visits: hospitaler    # emergency room visits in the past 12 months: 1 = none, 2 = one, 3 = two or more
+                           # (2022 on: 3 = two or three, 4 = four or more; both become "two or more")

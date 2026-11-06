@@ -254,12 +254,16 @@ def build_analysis_table(selected: pd.DataFrame, config: Config) -> pd.DataFrame
 
     The output columns are:
 
-    ``year, hhid, age, sex, weight, stratum, state, severity`` and then one
+    ``year, hhid, age, sex, weight, stratum, state, severity, forgone_care,
+    er_visits`` and then one
     0/1/NaN column per included condition (``adhd``, ``anxiety``, ...).
 
     ``severity`` is the parent's rating of how severe the child's autism is
-    (mild, moderate, severe). It is never used for clustering; it is held
-    back so we can test whether the clusters tell us anything about it.
+    (mild, moderate, severe). ``forgone_care`` (yes, no) says whether the
+    child needed health care in the past 12 months and did not get it, and
+    ``er_visits`` (none, one, two or more) counts emergency room visits in
+    the past 12 months. None of the three is used for clustering; they are
+    held back to test whether the clusters tell us anything about them.
     ``weight``, ``stratum`` and ``state`` describe how the survey was sampled
     and are used only in step 7 to turn sample counts into national shares.
     """
@@ -274,6 +278,9 @@ def build_analysis_table(selected: pd.DataFrame, config: Config) -> pd.DataFrame
             "stratum": selected[key["stratum"]].astype(str),
             "state": selected[key["state"]].astype(int),
             "severity": selected[key["asd_severity"]].map({1: "mild", 2: "moderate", 3: "severe"}),
+            "forgone_care": selected[key["forgone_care"]].map({1: "yes", 2: "no"}),
+            # Four response levels from 2022 on, three before; "two or more" is the level all years share.
+            "er_visits": selected[key["er_visits"]].map({1: "none", 2: "one", 3: "two or more", 4: "two or more"}),
         },
         index=selected.index,
     )
