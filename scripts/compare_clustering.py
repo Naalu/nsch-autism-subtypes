@@ -37,10 +37,10 @@ hierarchical
     have the same number of merges. Jaccard distances on 18 yes/no flags tie
     often (many pairs sit at exactly 1/2 or 2/3), and which tie is merged first
     changes the averages computed later. To see how much that alone matters,
-    SciPy is also run on the same children in a shuffled order and compared
-    with itself; differences between our tree and SciPy's that are no larger
-    than SciPy's differences with itself come from tie order, not from our
-    code.
+    SciPy is also run on the same children in several shuffled orders and
+    compared with itself; differences between our tree and SciPy's that fall
+    within the range of SciPy's differences with itself come from tie order,
+    not from our code.
 
 Outputs::
 
@@ -119,7 +119,7 @@ def nonzero_heights(merges: np.ndarray) -> np.ndarray:
     return np.sort(heights[heights > 1e-12])
 
 
-def compare_hierarchical(X: np.ndarray, ks: list[int], seed: int = 0) -> list[dict]:
+def compare_hierarchical(X: np.ndarray, ks: list[int], n_shuffles: int = 5, seed: int = 0) -> list[dict]:
     """Our weighted average linkage on distinct profiles against SciPy's on every child."""
     unique_rows, row_of_child, counts = np.unique(X, axis=0, return_inverse=True, return_counts=True)
     row_of_child = row_of_child.ravel()
@@ -131,14 +131,16 @@ def compare_hierarchical(X: np.ndarray, ks: list[int], seed: int = 0) -> list[di
     start = time.perf_counter()
     ours_tree = cluster_hierarchical(unique_rows, ks[0], weights=counts).merges
     log(f"   our tree on distinct profiles: {time.perf_counter() - start:.0f}s")
-    order = np.random.default_rng(seed).permutation(len(X))
-    shuffled_tree = cluster_scipy(X[order], ks[0]).merges
-    back = np.argsort(order)  # position of each child in the shuffled order
+    random_generator = np.random.default_rng(seed)
+    shuffles = []  # (tree, position of each child in the shuffled order)
+    for _ in range(n_shuffles):
+        order = random_generator.permutation(len(X))
+        shuffles.append((cluster_scipy(X[order], ks[0]).merges, np.argsort(order)))
 
     ours_heights, reference_heights = nonzero_heights(ours_tree), nonzero_heights(reference_tree)
     same_count = len(ours_heights) == len(reference_heights)
     height_gap = float(np.abs(ours_heights - reference_heights).max()) if same_count else float("nan")
-    shuffled_gap = float(np.abs(nonzero_heights(shuffled_tree) - reference_heights).max())
+    shuffled_gaps = [float(np.abs(nonzero_heights(tree) - reference_heights).max()) for tree, _ in shuffles]
 
     from scipy.cluster.hierarchy import cut_tree
 
@@ -146,28 +148,31 @@ def compare_hierarchical(X: np.ndarray, ks: list[int], seed: int = 0) -> list[di
     for k in ks:
         ours_labels = cluster_hierarchical(unique_rows, k, weights=counts).labels[row_of_child]
         reference_labels = cut_tree(reference_tree, n_clusters=k).ravel()
-        shuffled_labels = cut_tree(shuffled_tree, n_clusters=k).ravel()[back]
+        shuffled_aris = [adjusted_rand_index(cut_tree(tree, n_clusters=k).ravel()[back], reference_labels) for tree, back in shuffles]
         rows.append(
             {
                 "method": "hierarchical (average linkage, Jaccard)",
                 "k": k,
                 "ari_ours_vs_library": adjusted_rand_index(ours_labels, reference_labels),
-                "ari_library_vs_shuffled_library": adjusted_rand_index(shuffled_labels, reference_labels),
+                "ari_library_vs_shuffled_library_min": min(shuffled_aris),
+                "ari_library_vs_shuffled_library_max": max(shuffled_aris),
                 "nonzero_merges_ours": len(ours_heights),
                 "nonzero_merges_library": len(reference_heights),
                 "max_merge_height_gap": height_gap,
-                "max_merge_height_gap_library_vs_shuffled": shuffled_gap,
+                "max_merge_height_gap_library_vs_shuffled_min": min(shuffled_gaps),
+                "max_merge_height_gap_library_vs_shuffled_max": max(shuffled_gaps),
                 "sizes_ours": sorted(np.bincount(ours_labels, minlength=k).tolist(), reverse=True),
                 "sizes_library": sorted(np.bincount(reference_labels, minlength=k).tolist(), reverse=True),
             }
         )
         row = rows[-1]
         log(
-            f"hierarchical K={k}: ARI {row['ari_ours_vs_library']:.3f} (SciPy vs shuffled SciPy {row['ari_library_vs_shuffled_library']:.3f}); "
+            f"hierarchical K={k}: ARI {row['ari_ours_vs_library']:.3f} "
+            f"(SciPy vs shuffled SciPy {min(shuffled_aris):.3f} to {max(shuffled_aris):.3f}); "
             f"sizes ours {row['sizes_ours']}, SciPy {row['sizes_library']}"
         )
     log(f"   merges above height 0: ours {len(ours_heights)}, SciPy {len(reference_heights)}")
-    log(f"   largest height gap {height_gap:.3f} (SciPy vs shuffled SciPy {shuffled_gap:.3f})")
+    log(f"   largest height gap {height_gap:.3f} (SciPy vs shuffled SciPy {min(shuffled_gaps):.3f} to {max(shuffled_gaps):.3f})")
     return rows
 
 
@@ -176,6 +181,8 @@ def main() -> None:
     parser.add_argument("--ks", type=int, nargs="+", default=[2, 3, 4, 5, 6], help="K values to compare")
     parser.add_argument("--n-starts", type=int, default=200, help="k-means random starts per seed (step 4 uses 200)")
     parser.add_argument("--seeds", type=int, default=5, help="k-means seeds per implementation (step 4 uses 5)")
+    parser.add_argument("--shuffles", type=int, default=5, help="hierarchical: shuffled-order SciPy runs used as the tie-order control")
+    parser.add_argument("--methods", nargs="+", choices=["kmeans", "hierarchical"], default=["kmeans", "hierarchical"], help="which comparisons to run")
     parser.add_argument("--reports", type=Path, default=REPO / "reports", help="output root for the table")
     parser.add_argument("--results", type=Path, default=REPO / "results", help="where to save the JSON")
     args = parser.parse_args()
@@ -185,14 +192,26 @@ def main() -> None:
     ks = sorted(args.ks)
     seeds = list(range(args.seeds))
 
-    rows = compare_kmeans(X, ks, args.n_starts, seeds) + compare_hierarchical(X, ks)
+    rows = []
+    if "kmeans" in args.methods:
+        rows += compare_kmeans(X, ks, args.n_starts, seeds)
+    if "hierarchical" in args.methods:
+        rows += compare_hierarchical(X, ks, n_shuffles=args.shuffles)
     summary = pd.DataFrame(rows)
     tables_dir = args.reports / "tables"
     tables_dir.mkdir(parents=True, exist_ok=True)
     summary.to_csv(tables_dir / "backend_clustering.csv", index=False)
     args.results.mkdir(parents=True, exist_ok=True)
     save_json(
-        {"children": len(X), "conditions": len(flags), "ks": ks, "kmeans_starts_per_seed": args.n_starts, "kmeans_seeds": seeds, "comparisons": rows},
+        {
+            "children": len(X),
+            "conditions": len(flags),
+            "ks": ks,
+            "kmeans_starts_per_seed": args.n_starts,
+            "kmeans_seeds": seeds,
+            "hierarchical_shuffles": args.shuffles,
+            "comparisons": rows,
+        },
         args.results / "backend_clustering.json",
     )
     log(f"Wrote {tables_dir / 'backend_clustering.csv'} and {args.results / 'backend_clustering.json'}")
