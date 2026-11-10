@@ -24,7 +24,7 @@ help:
 	@echo "make calibrate  steps 14 and 15 only: shape, stability and replication checks on simulated data (about an hour; step 15 at K=$(K))"
 	@echo "make outcomes   step 16 only: the three held-out outcomes and the pandemic-years checks at K=$(K) (5 to 10 minutes)"
 	@echo "make figures    redraw the results figures from existing outputs"
-	@echo "make compare    compare saved reference and from-scratch fits, with tables, data, and diagrams"
+	@echo "make compare    our code against StepMix (saved fits), scikit-learn and SciPy (refit; about 5 minutes)"
 	@echo "make overview   the data-overview figures (needs data/interim from 'make download')"
 	@echo "make paper      build paper/main.pdf from the committed figures (needs LaTeX)"
 	@echo "make download   steps 1 and 2 from the Census files (about 60 MB; not needed for anything else)"
@@ -60,6 +60,7 @@ figures:
 
 compare:
 	$(PY) scripts/compare_backends.py
+	$(PY) scripts/compare_clustering.py
 
 overview:
 	$(PY) scripts/make_data_overview.py
