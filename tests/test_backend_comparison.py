@@ -101,3 +101,23 @@ def test_comparison_outputs_data_and_charts_without_writing_a_report(saved_pair,
     comparison = json.loads((ours_dir / "backend_comparison.json").read_text())
     assert comparison["profile_k"] == 2
     assert comparison["comparisons"][0]["ari"] == 1
+
+
+def test_clustering_comparison_agrees_on_synthetic_data():
+    """Our k-means and hierarchical code against the libraries, through the comparison script's own functions."""
+    from compare_clustering import compare_hierarchical, compare_kmeans, fixed_point, nonzero_heights
+    from nsch_subtypes.reference import cluster_kmeans_sklearn
+    from nsch_subtypes.synthetic import make_synthetic
+
+    X = make_synthetic(n=300, seed=3)[0].astype(float)
+    kmeans_rows = compare_kmeans(X, [3], n_starts=10, seeds=[0, 1])
+    assert kmeans_rows[0]["reassignment_matches_library"]
+    assert abs(kmeans_rows[0]["inertia_gap_percent"]) < 1.0
+
+    reference = cluster_kmeans_sklearn(X, 3, n_starts=10, seed=0)
+    same_labels, center_gap = fixed_point(X, reference.labels, reference.centers)
+    assert same_labels and center_gap < 1e-3
+
+    tree_rows = compare_hierarchical(X, [2, 3])
+    assert tree_rows[0]["nonzero_merges_ours"] == tree_rows[0]["nonzero_merges_library"]
+    assert nonzero_heights(np.array([[0, 1, 0.0, 2], [2, 3, 0.5, 3]])).tolist() == [0.5]

@@ -8,7 +8,7 @@ The pipeline runs end to end on the real 2016 to 2025 files with our from-scratc
 
 Short version: the conditions vary along two continuous axes. Four broad profiles, the combinations of high and low on a developmental-language and a psychiatric axis, replicate, but only as well as the same cut of a smooth continuum does (step 15). A continuous model fits better and predicts new years as well as eight classes, finer class solutions do not replicate, and medical and sensory conditions show up as a third axis or as a small unstable fifth class. Severity follows the developmental axis.
 
-The same pipeline run with StepMix, SciPy and scikit-learn (`BACKEND=reference`, into `results_reference/`) is the check on our code. The latent class fits agree at ARI 0.988, 0.978 and 0.966 at K = 4, 5 and 6, and every K = 4 check with a pass line moves by 0.02 or less. `reports/implementation-comparison.md` has the comparison at K = 1 to 4.
+The same pipeline run with StepMix, SciPy and scikit-learn (`BACKEND=reference`, into `results_reference/`) is the check on our code. The latent class fits agree at ARI 0.988, 0.978 and 0.966 at K = 4, 5 and 6, and every K = 4 check with a pass line moves by 0.02 or less. Refit directly, our k-means finds the same clusters as scikit-learn at K = 2 to 4, and our hierarchical tree differs from SciPy's only by tie order, about as much as SciPy differs from itself on shuffled rows. `reports/implementation-comparison.md` has both comparisons.
 
 ## Things decided, so nobody re-decides them
 

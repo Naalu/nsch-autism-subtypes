@@ -36,6 +36,11 @@ order, matches the classes, and writes:
 - `reports/figures/backend_comparison/backend_rate_differences.png`: signed differences in percentage points.
 - `results/backend_comparison.json`: comparison metrics, the profile K, input locations, and recorded fit settings.
 
+`python scripts/compare_clustering.py` refits our k-means and hierarchical clustering and the scikit-learn and SciPy versions on the same children at K = 2 to 6:
+
+- `reports/tables/backend_clustering.csv`: one row per method and K. k-means: ARI between the two best solutions, each one's inertia and the gap in percent, whether our assignment step reproduces scikit-learn's clusters from its centers, and the largest center gap. Hierarchical: ARI between the cuts, the range of ARI for SciPy against itself on shuffled rows (the tie-order control), merge counts above height 0, and the largest merge-height gap for each pair.
+- `results/backend_clustering.json`: the same numbers plus the settings.
+
 The comparison charts use the 20-start fits from `make fit` with each
 backend; they say how closely the two implementations agree, not whether the
 classes are real.

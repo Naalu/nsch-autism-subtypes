@@ -1,8 +1,10 @@
 # Comparing the from-scratch and reference implementations
 
-Do the two implementations fit the same latent class model? This report compares saved NumPy and StepMix
-fits on the same children and condition flags. Classes are matched by their fitted condition rates before
-comparing profiles; their original numbers are arbitrary.
+Does our code give the same answers as the standard libraries? This report compares our NumPy latent class
+model with StepMix, and our k-means and hierarchical clustering with scikit-learn and SciPy, on the same
+children and condition flags. The latent class sections use saved fits; classes are matched by their fitted
+condition rates before comparing profiles, since their original numbers are arbitrary. The last section
+refits both versions of the two second methods.
 
 ## What was compared
 
@@ -48,8 +50,56 @@ probabilities, rather than raw within-class percentages.
 Positive values mean a higher rate in ours; negative values mean a higher rate in the reference. The
 units are percentage points, and the color scale is centered at zero.
 
+## k-means and hierarchical clustering
+
+`scripts/compare_clustering.py` fits both versions of each method on the same 8,891 children at K = 2 to 6
+and writes [the clustering table](tables/backend_clustering.csv). k-means uses the settings of step 4: 200
+random starts from each of five seeds, keeping the solution with the lowest total distance (inertia).
+
+### k-means
+
+| K | ARI, ours vs scikit-learn | Inertia, ours | Inertia, scikit-learn |
+|---|---|---|---|
+| 2 | 1.000 | 15,317.6 | 15,317.6 |
+| 3 | 1.000 | 13,740.3 | 13,740.3 |
+| 4 | 1.000 | 12,585.4 | 12,585.4 |
+| 5 | 0.989 | 11,837.8 | 11,837.7 |
+| 6 | 0.682 | 11,229.7 | 11,229.4 |
+
+At K = 2 to 4, including the K = 4 used everywhere else, the two find the same clusters. At K = 5 and 6
+they stop on different solutions whose inertia differs by less than 0.003%: these are the near-tied
+solutions described in step 4, and scikit-learn, which picks starting centers by k-means++ rather than at
+random, lands on the slightly better one. The two pieces of arithmetic agree exactly: assigning every child to the nearest of
+scikit-learn's final centers with our distance code reproduces scikit-learn's clusters at every K, and the
+means of those clusters match its centers (to 0.0007 at K = 5, where scikit-learn stopped just inside its
+convergence tolerance; to rounding error elsewhere).
+
+### Hierarchical clustering
+
+Our version runs on the 1,347 distinct condition profiles, each weighted by the number of children who share
+it; SciPy runs on all 8,891 children. Both build trees with 1,346 merges above height 0 (SciPy first merges
+identical children at height 0).
+
+| K | ARI, ours vs SciPy | ARI, SciPy vs SciPy on shuffled rows (5 orders) |
+|---|---|---|
+| 2 | 1.000 | 1.000 to 1.000 |
+| 3 | 0.948 | 0.952 to 0.962 |
+| 4 | 0.947 | 0.906 to 0.956 |
+| 5 | 0.947 | 0.911 to 0.966 |
+| 6 | 0.948 | 0.899 to 0.976 |
+
+The two trees do not match exactly, and SciPy does not match itself either. Jaccard distances on 18 yes/no
+flags tie often, and average linkage has to break each tie by taking one merge first; that choice changes
+the averages computed for every later merge. SciPy breaks ties by row order, so shuffling the children
+changes its tree. Our tree differs from SciPy's by about as much as SciPy's trees differ from each other: our
+ARI sits inside SciPy's own range at K = 4 to 6 and just below it at K = 3, and the largest merge-height gap
+is 0.031, against 0.027 to 0.061 between SciPy runs. Every version puts the same 517 children with no
+conditions in one cluster and more than 8,300 of the rest in another; the differences are in which handful of
+children form the small clusters. This is the chaining described in `docs/validation-checklist.md`, decision
+2, and the reason k-means is the reported second method.
+
 ## What the numbers in the repository come from
 
 Every number in the README, the validation checklist and the paper comes from the from-scratch code
-(`results/` and `results_k*/`). The StepMix fits in `results_reference/` are the check on it; rerunning
-`make compare` after a sweep refreshes this report's tables and figures for every K both backends fit.
+(`results/` and `results_k*/`). The StepMix fits in `results_reference/` and the refits above are the check
+on it; rerunning `make compare` after a sweep refreshes this report's tables and figures.
