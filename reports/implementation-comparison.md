@@ -8,7 +8,7 @@ refits both versions of the two second methods.
 
 ## What was compared
 
-- K values: 1, 2, 3, 4; profile diagrams use K=4.
+- K values: 1 to 8; profile diagrams use K=4.
 - Children: 8,891, ages 6 to 17, survey years 2016 to 2024. The 2025 holdout is excluded.
 - Settings: reference: 20 starts, seed 0, max 2000 iterations, ours: 20 starts, seed 0, max 2000 iterations.
 - All compared fits converged.
@@ -28,6 +28,10 @@ gap is **0.3518 percentage points**.
 The two implementations can reach different local optima and stop at different times. Equal seed values
 do not produce identical initializations across libraries. These comparisons measure agreement; they do
 not establish that the latent classes are real subtypes or choose K.
+
+Across K = 1 to 8 the agreement runs from 0.961 to 1.000 ([the summary table](tables/backend_comparison.csv)),
+and the largest matched condition-rate gap grows with K, to 2.9 percentage points at K=8, as the smaller
+classes become harder for either implementation to pin down.
 
 ### Model fit
 
@@ -64,14 +68,14 @@ random starts from each of five seeds, keeping the solution with the lowest tota
 | 3 | 1.000 | 13,740.3 | 13,740.3 |
 | 4 | 1.000 | 12,585.4 | 12,585.4 |
 | 5 | 0.989 | 11,837.8 | 11,837.7 |
-| 6 | 0.682 | 11,229.7 | 11,229.4 |
+| 6 | 0.689 | 11,229.7 | 11,230.3 |
 
 At K = 2 to 4, including the K = 4 used everywhere else, the two find the same clusters. At K = 5 and 6
-they stop on different solutions whose inertia differs by less than 0.003%: these are the near-tied
-solutions described in step 4, and scikit-learn, which picks starting centers by k-means++ rather than at
-random, lands on the slightly better one. The two pieces of arithmetic agree exactly: assigning every child to the nearest of
+they stop on different solutions whose inertia differs by less than 0.01%: these are the near-tied
+solutions described in step 4. Neither is consistently better: scikit-learn's is lower by 0.0007% at K = 5
+and ours by 0.006% at K = 6. The two pieces of arithmetic agree exactly: assigning every child to the nearest of
 scikit-learn's final centers with our distance code reproduces scikit-learn's clusters at every K, and the
-means of those clusters match its centers (to 0.0007 at K = 5, where scikit-learn stopped just inside its
+means of those clusters match its centers (to 0.0005 at K = 5, where scikit-learn stopped just inside its
 convergence tolerance; to rounding error elsewhere).
 
 ### Hierarchical clustering
@@ -83,20 +87,27 @@ identical children at height 0).
 | K | ARI, ours vs SciPy | ARI, SciPy vs SciPy on shuffled rows (5 orders) |
 |---|---|---|
 | 2 | 1.000 | 1.000 to 1.000 |
-| 3 | 0.948 | 0.952 to 0.962 |
-| 4 | 0.947 | 0.906 to 0.956 |
-| 5 | 0.947 | 0.911 to 0.966 |
-| 6 | 0.948 | 0.899 to 0.976 |
+| 3 | 0.988 | 0.986 to 1.000 |
+| 4 | 0.979 | 0.973 to 0.988 |
+| 5 | 0.961 | 0.941 to 0.983 |
+| 6 | 0.958 | 0.872 to 0.976 |
 
 The two trees do not match exactly, and SciPy does not match itself either. Jaccard distances on 18 yes/no
 flags tie often, and average linkage has to break each tie by taking one merge first; that choice changes
 the averages computed for every later merge. SciPy breaks ties by row order, so shuffling the children
 changes its tree. Our tree differs from SciPy's by about as much as SciPy's trees differ from each other: our
-ARI sits inside SciPy's own range at K = 4 to 6 and just below it at K = 3, and the largest merge-height gap
-is 0.031, against 0.027 to 0.061 between SciPy runs. Every version puts the same 517 children with no
+ARI sits inside SciPy's own range at every K, and the largest merge-height gap is 0.023, against 0.025 to
+0.065 between SciPy runs. Every version puts the same 517 children with no
 conditions in one cluster and more than 8,300 of the rest in another; the differences are in which handful of
 children form the small clusters. This is the chaining described in `docs/validation-checklist.md`, decision
 2, and the reason k-means is the reported second method.
+
+The library results also depend on the machine. These tables come from the frozen run on macOS; on Linux the
+same script gave SciPy cuts that agreed with ours at about 0.95 at every K from 3 to 6, still close to SciPy's
+range against itself there, and a scikit-learn solution at K = 6 slightly better than ours. Our own clusters
+and inertias were identical on both machines. Tie-breaking in SciPy and the k-means++ starts in scikit-learn
+depend on floating-point and threading details that differ between platforms; our code fixes its order and
+seeds.
 
 ## What the numbers in the repository come from
 
