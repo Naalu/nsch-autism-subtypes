@@ -260,9 +260,7 @@ def main() -> None:
         },
         args.results / "factor_mixture.json",
     )
-    log(
-        f"wrote factor_mixture.csv, factor_mixture_heldout.csv, factor_mixture_calibration.csv, factor_mixture_fits.npz and factor_mixture.json to {args.results}"
-    )
+    log(f"wrote factor_mixture.csv, _heldout.csv, _calibration.csv, _fits.npz and factor_mixture.json to {args.results}")
 
 
 if __name__ == "__main__":
