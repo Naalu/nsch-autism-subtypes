@@ -119,6 +119,29 @@ def test_every_script_runs_at_tiny_settings(tmp_path: Path, backend: str) -> Non
         and (main_results / "positions_2d.npz").exists()
     )
 
+    # Step 17: factor mixture models, with too few iterations to mean anything but enough to write every file.
+    run(
+        "17_factor_mixture.py",
+        "--results",
+        main_results,
+        "--k",
+        str(K),
+        "--k-max",
+        "2",
+        "--k-max-separate",
+        "2",
+        "--replicates",
+        "1",
+        "--n-starts",
+        "2",
+        "--short-iter",
+        "3",
+        "--max-iter",
+        "3",
+    )
+    for name in ("factor_mixture.csv", "factor_mixture_heldout.csv", "factor_mixture_calibration.csv", "factor_mixture_fits.npz", "factor_mixture.json"):
+        assert (main_results / name).exists(), f"{name} was not written"
+
     # Figures, drawn for K = 3 from the temporary folders into a temporary reports folder.
     run("make_results_figures.py", "--results", main_results, "--reports", report_directory, "--k", str(K))
     for figure in ("classes.png", "severity_by_class.png", "checks_by_k.png"):
