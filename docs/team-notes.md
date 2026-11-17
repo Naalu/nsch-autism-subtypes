@@ -4,9 +4,9 @@ Where the project stands, what is waiting on what, and how to pick it up.
 
 ## Where we are
 
-The pipeline runs end to end on the real 2016 to 2025 files with our from-scratch code, which is the default backend. Every check in the proposal has been run at K = 4 to 8 with 200 bootstrap resamples, plus the checks added after the first results (steps 9 to 15). The findings are summarized in the README and argued in `docs/validation-checklist.md` and the paper; the figures are in `reports/figures/results/`.
+The pipeline runs end to end on the real 2016 to 2025 files with our from-scratch code, which is the default backend. Every check in the proposal has been run at K = 4 to 8 with 200 bootstrap resamples, plus the checks added after the first results (steps 9 to 17). The findings are summarized in the README and argued in `docs/validation-checklist.md` and the paper; the figures are in `reports/figures/results/`.
 
-Short version: the conditions vary along two continuous axes. Four broad profiles, the combinations of high and low on a developmental-language and a psychiatric axis, replicate, but only as well as the same cut of a smooth continuum does (step 15). A continuous model fits better and predicts new years as well as eight classes, finer class solutions do not replicate, and medical and sensory conditions show up as a third axis or as a small unstable fifth class. Severity follows the developmental axis.
+Short version: the conditions vary along two continuous axes. Four broad profiles, the combinations of high and low on a developmental-language and a psychiatric axis, replicate, but only as well as the same cut of a smooth continuum does (step 15). A continuous model fits better and predicts new years as well as eight classes, finer class solutions do not replicate, and medical and sensory conditions show up as a third axis or as a small unstable fifth class. Severity follows the developmental axis. With the two axes in the model, adding groups to it buys almost nothing (step 17): one soft second group lowers BIC by 7, where data with four real classes would lower it by about 500.
 
 The same pipeline run with StepMix, SciPy and scikit-learn (`BACKEND=reference`, into `results_reference/`) is the check on our code. The latent class fits agree at ARI 0.988, 0.978 and 0.966 at K = 4, 5 and 6, and every K = 4 check with a pass line moves by 0.02 or less. Refit directly, our k-means finds the same clusters as scikit-learn at K = 2 to 4, and our hierarchical tree differs from SciPy's only by tie order, about as much as SciPy differs from itself on shuffled rows. `reports/implementation-comparison.md` has both comparisons.
 
@@ -17,7 +17,7 @@ The same pipeline run with StepMix, SciPy and scikit-learn (`BACKEND=reference`,
 - The second method is k-means, 200 starts from each of five seeds, lowest inertia reported with the seed range. The hierarchical result is reported as the failure it is, with the explanation.
 - The paper's framing: four broad profiles on two main axes replicate, borders are soft, the structure is mostly continuous. Not "four subtypes", and not "no structure".
 - The severity test is reported under both readings of the pre-fit wording, with the comparator models.
-- A factor mixture model (classes plus continuous variation within them) is future work, not in this project.
+- The factor mixture model (step 17) keeps every condition's slopes and intercept the same in all groups. The shared-spread version is the main model and the separate-spreads version the sensitivity check; both are reported whatever they show. Step 17's numbers come from a run made after the analysis freeze tag, which covers steps 1 to 16.
 - Survey weights are used only to describe. The weighted-fit check agrees with the unweighted one at ARI 0.77, and at 0.999 among confidently placed children.
 - Children with any missing flag are dropped (8.4%). The dropped-vs-kept table is in `results_k4/dropped_vs_kept.csv`; they are about the same age and slightly more often rated severe (12% against 10%), which goes in limitations.
 - The update presentation covers the instructor's three asks (closest published results, SUVAC, raw and processed data), the from-scratch implementation and the four profiles with their replication checks. The classes-versus-continuum results (the map, the density figure, the stability simulation) are for the final presentation.
@@ -25,10 +25,11 @@ The same pipeline run with StepMix, SciPy and scikit-learn (`BACKEND=reference`,
 ## Things not yet done
 
 - The AI-disclosure line in the README.
-- The Week 13 update slides, from the results figures.
-- The paper sections still marked as stubs (`make paper` prints how many): abstract, the latent class model, the four profiles, severity, K = 5 and the discussion. `paper/outline.md` has the division of labor.
+- Step 17 rerun on the machine that made the frozen tables (`make mixture`, then `make figures`), so its tables come from the same place as the rest.
+- The project website with the interactive map.
+- The paper sections still marked as stubs (`make paper` prints how many): abstract, the latent class model, the four profiles, severity, K = 5 and the discussion. The outcomes of step 16 still need a results subsection. `paper/outline.md` has the division of labor.
 - Confirm the Ward-linkage ARI in `reports/tables/method_comparison.csv` (0.34) with a fresh `scripts/04_crosscheck.py --method alternatives` run; a cloud rerun gave 0.24, probably from how tied merges are broken.
-- At the analysis freeze: commit the result folders with `git add -f`, and the final `paper/main.pdf`.
+- The final `paper/main.pdf`, committed once the stubs are written.
 - The final slides need the repository link (and the website link, if we build the site).
 
 ## How to rerun anything
@@ -37,6 +38,7 @@ The same pipeline run with StepMix, SciPy and scikit-learn (`BACKEND=reference`,
     make test                                # unit tests, synthetic data
     make smoke                               # every script once at tiny settings, both backends
     make fit                                 # step 3 into results/
+    make mixture                             # step 17 only: factor mixture models (1 to 2 hours)
     make sweep                               # steps 4 to 16 at K = 4 to 8, then steps 13, 14 and 17 and the figures (5 to 7 hours)
     make choose calibrate figures            # just steps 13 to 15 and the figures, from existing outputs
     make paper                               # build paper/main.pdf

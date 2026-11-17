@@ -80,7 +80,13 @@ The multidimensional two-parameter logistic model: each child has a position on 
 
 What the tests check (`tests/test_latent_trait.py`): on data simulated from known slopes the fit recovers the planted structure, and two dimensions beat one; with all slopes zero the log-likelihood equals the closed form for independent items, so it is on the same scale as the latent class model; the held-out scorer gives the same number as the fit on the fitting data, and the rotation is orthogonal; implied pair probabilities match simulated frequencies; drawn positions track the true ones; a dimension that collapses onto one item stops at the slope bound and is flagged; and the density estimate stays near the normal when the truth is normal and finds two lumps when positions come in two groups.
 
-## 5. Which steps use which method
+## 5. Factor mixture model: `factor_mixture.fit_factor_mixture(X, n_groups, n_dims=2, shared_spread=True, n_starts=10, short_iter=200, n_finalists=2, max_iter=5000, tol=1e-5, seed=0, trait=None) -> FactorMixtureResult`
+
+The latent trait model with its single standard normal replaced by a mixture of `n_groups` normals: each group has a share, a mean and a covariance on the `n_dims` axes, and every condition keeps one set of slopes and one intercept across groups. With one group it is the latent trait model; `shared_spread=True` gives every group the same covariance. Positions are integrated out on an even grid (41 points from -5 to 5 per axis), where each group's normal becomes a set of weights. The E-step computes each distinct row's posterior over (group, grid point); the M-step updates shares, means and covariances from the expected counts and the conditions by the same weighted logistic regression as the latent trait model. After every iteration the solution is moved to the frame where positions have mean zero and identity covariance over all children, which changes nothing about the fit and keeps slopes on the latent trait scale and the data on the grid. Group standard deviations are floored at `MIN_GROUP_SD` (0.25, the grid spacing), which only binds when the data are close to separate classes. Fitting is in two stages because EM is slow near the optimum: `short_iter` iterations from each of `n_starts` starting points (the first from k-means on the latent trait scores, the rest random), then the best `n_finalists` are continued to convergence. Parameters: the latent trait model's, plus a share and a mean per extra group, plus a covariance per extra group in the separate-spreads version.
+
+What the tests check (`tests/test_factor_mixture.py`): with one group the log-likelihood and parameter count match the latent trait model; parameter counts for both versions; two planted groups are found, beat one group on BIC and are recovered child by child, while a second group gains almost nothing on data simulated without groups; the standardized frame holds; and the held-out scorer and group probabilities reproduce the fit on the fitting data.
+
+## 6. Which steps use which method
 
 | Script | Method | Backend flag |
 |---|---|---|
@@ -90,6 +96,7 @@ What the tests check (`tests/test_latent_trait.py`): on data simulated from know
 | `12_dimensions.py`, `13_heldout_selection.py`, `14_shape_and_stability.py`, `15_replication_calibration.py` | `fit_latent_trait` (ours only) | for the class fits |
 | `15_replication_calibration.py` | `fit_lca` and `cluster_kmeans` on simulated data | yes |
 | `16_outcomes.py` | `fit_latent_trait` for the axis scores (ours only); `fit_lca` for the refit without 2020 and 2021 | yes |
+| `17_factor_mixture.py` | `fit_latent_trait` and `fit_factor_mixture` (ours only), on real and simulated data | no |
 
 Two pieces use libraries by design whatever the backend: the survey-weighted refit in step 11 (StepMix, which takes weights) and the six alternative methods in step 4.
 

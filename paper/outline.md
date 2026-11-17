@@ -40,6 +40,7 @@ Source: `docs/background.md` section 3, `docs/implementation.md`, drafted in `se
 - Choice of K: BIC planned; BIC and held-out likelihood both keep improving; the stability rule (stated as post hoc).
 - Checks, each with its pass line and the reference it comes from: second method (ARI 0.65, Steinley 2004); held-out years; 2025 forward test; bootstrap (Jaccard 0.75, Hennig 2007); age bands; parallel items; count-vs-class on severity.
 - The continuous alternative: latent trait models with 1 to 4 dimensions on the same likelihood scale; pairwise residuals; simulation in both directions; held-out likelihood.
+- The model between the two: factor mixture models with 1 to 4 groups on the two axes, shared and separate spreads, on real and simulated data.
 - Survey weights: description only; weighted-fit robustness check.
 
 ## 4. Results (3 pages)
@@ -57,7 +58,7 @@ Held-out years 0.71, 2025 0.79 with shares (`reports/figures/results/shares_pool
 `results_k4/severity_by_class.csv`, `results_k4/count_vs_class.csv`, `reports/figures/results/severity_by_class.png`. About 20% severe in the two developmental classes, 2% to 4% in the other two. Count plus class beats count; class alone does not; factor scores beat count plus class. Both readings of the pre-fit wording.
 
 ### 4.5 Classes or dimensions
-`results_k4/dimensions.json`, `loadings_2d.csv`, `loadings_3d.csv`, `bivariate_residuals.csv`, `results/heldout_selection.csv`, `reports/figures/results/loadings.png`, `model_fit.png`. Two-dimensional model wins on BIC with 53 parameters and matches K=8 on held-out years; loadings split cleanly; quadrant rule ARI 0.80; third dimension is medical-sensory and cuts poorly fit pairs from 49 to 36; data simulated from the continuum reproduce the real BIC curve, data simulated from four classes do not. Shape of the latent distribution: gain over the bell curve 94 for real data, 16 to 22 for simulated continua, 180 to 199 for simulated classes (`latent_density.png`). The map (`map.png`): one cloud, classes as regions, uncertain children on the borders. Agreement by confidence (`agreement_by_confidence.png`): every check approaches 1 among confidently classified children.
+`results_k4/dimensions.json`, `loadings_2d.csv`, `loadings_3d.csv`, `bivariate_residuals.csv`, `results/heldout_selection.csv`, `reports/figures/results/loadings.png`, `model_fit.png`. Two-dimensional model wins on BIC with 53 parameters and matches K=8 on held-out years; loadings split cleanly; quadrant rule ARI 0.80; third dimension is medical-sensory and cuts poorly fit pairs from 49 to 36; data simulated from the continuum reproduce the real BIC curve, data simulated from four classes do not. Shape of the latent distribution: gain over the bell curve 94 for real data, 16 to 22 for simulated continua, 180 to 199 for simulated classes (`latent_density.png`). Factor mixture model (`reports/tables/factor_mixture.csv`, `factor_mixture_heldout.csv`, `factor_mixture_calibration.csv`, `factor_mixture.png`): with the axes in the model a second group lowers BIC by 7 and gains 17 log-likelihood units, against 0.4 to 4 in simulated continua and 244 to 264 in simulated classes; no third or fourth group; separate spreads do not help. The map (`map.png`): one cloud, classes as regions, uncertain children on the borders. Agreement by confidence (`agreement_by_confidence.png`): every check approaches 1 among confidently classified children.
 
 ### 4.6 The K=5 sensitivity analysis
 `results_k5/`. The severe intellectual-disability-and-medical class: 9% weighted, 45% severe, Jaccard 0.63, held-out-years replication 0.635 (fails), weighted fit 0.59. The same signal as the third dimension. Exists; membership unstable.
@@ -68,7 +69,7 @@ Held-out years 0.71, 2025 0.79 with shares (`reports/figures/results/shares_pool
 - Against the literature: Litman's 37/19/34/10 and the "broadly affected" class in Vargason and Litman; the psychiatric and developmental split in Lingren and Doshi-Velez; Zhang et al. 2025's two genetic factors (earlier diagnosis and early communication difficulty against later diagnosis, adolescent behavior and ADHD and mental health) as the counterpart of our two axes, including the age pattern; Kim et al. 2019 and Wittkopf et al. 2023 on dimensional and hybrid structure of core traits, which no study has done for co-occurring conditions.
 - Why distance methods fail on this data (chaining, near-tied k-means optima) and what that says about cross-method replication as a criterion for sparse binary indicators.
 - The post hoc K rule, said up front. The 2025 test as confirmatory.
-- Future work: a factor mixture model, which allows classes and continuous variation within them.
+- Future work: the same class-against-continuum comparison in SPARK or the Australian Autism Biobank; a factor mixture model on three axes.
 - Limitations: parent report and access to care; one observation per child, so no temporal or predictive validation; entropy 0.72; the 8.4% dropped; "currently has" wording; the proposal's hierarchical method failing.
 - What a clinician can take from it: place a child on two dials; severity ratings track the developmental dial.
 
@@ -88,6 +89,8 @@ Main text, in reading order. All in `reports/figures/results/` and `reports/tabl
 6. `severity_map.png`: share rated severe across the map. Severity rises along the developmental axis and does not jump at the class borders. `severity_by_class.png` gives the same by class.
 
 Table 1: sample by year and exclusions (`data/processed/selection_counts.csv`). Table 2: model comparison (`reports/tables/model_comparison.csv`, `heldout_selection.csv`). Table 3: the checks (`reports/tables/checks_by_k.csv` row K=4, `replication_calibration.csv`).
+
+7. `factor_mixture.png`: what adding groups to the two axes buys, real against simulated, and where the two groups sit.
 
 Supplement figures: `checks_by_k.png`, `stability_vs_simulation.png`, `latent_density.png`, `shares_pooled_vs_2025.png`, `shares_by_year.png`, `agreement_by_confidence.png`, `map.png` (two-panel version with condition arrows).
 
