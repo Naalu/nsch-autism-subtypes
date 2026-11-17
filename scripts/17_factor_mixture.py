@@ -44,6 +44,7 @@ Outputs, under ``--results``::
     factor_mixture_calibration.csv   improvement from adding groups: real and simulated data
     factor_mixture_fits.npz          group shares, means, covariances and child probabilities per model
     factor_mixture.json              summary and settings
+    factor_mixture_work/             each dataset's fits, kept so an interrupted run can resume
 
 Usage::
 
@@ -53,7 +54,9 @@ Usage::
 
 from __future__ import annotations
 
-from concurrent.futures import ProcessPoolExecutor
+import pickle
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -161,17 +164,36 @@ def main() -> None:
         tasks.append({"label": ("continuum", r), "X": continuum, "models": shared, "settings": settings})
         tasks.append({"label": (f"{k_classes} classes", r), "X": classes, "models": shared, "settings": settings})
 
-    log(f"fitting {sum(len(task['models']) for task in tasks)} models to {len(tasks)} datasets, {args.jobs} at a time")
-    results = {}
-    if args.jobs > 1:
+    # Each dataset's fits are saved as they finish, so an interrupted run picks up where it stopped.
+    work = args.results / "factor_mixture_work"
+    work.mkdir(parents=True, exist_ok=True)
+    stamp = {**settings, "models": {str(task["label"]): task["models"] for task in tasks}, "replicates": args.replicates, "k": k_classes}
+    stamp_path = work / "settings.pkl"
+    if not (stamp_path.exists() and pickle.loads(stamp_path.read_bytes()) == stamp):
+        for old in work.glob("*.pkl"):
+            old.unlink()
+        stamp_path.write_bytes(pickle.dumps(stamp))
+
+    def saved_path(label: tuple) -> Path:
+        return work / f"{label[0]}_{label[1]}.pkl".replace(" ", "_")
+
+    results = {task["label"]: pickle.loads(saved_path(task["label"]).read_bytes()) for task in tasks if saved_path(task["label"]).exists()}
+    todo = [task for task in tasks if task["label"] not in results]
+    log(f"{len(tasks)} datasets, {len(results)} already on file; fitting {sum(len(task['models']) for task in todo)} models, {args.jobs} datasets at a time")
+
+    def record(done: dict) -> None:
+        results[done["label"]] = done
+        saved_path(done["label"]).write_bytes(pickle.dumps(done))
+        log(f"   finished {done['label'][0]} {done['label'][1]}")
+
+    if args.jobs > 1 and todo:
         with ProcessPoolExecutor(max_workers=args.jobs) as pool:
-            for done in pool.map(fit_models, tasks):
-                results[done["label"]] = done
-                log(f"   finished {done['label'][0]} {done['label'][1]}")
+            for future in as_completed([pool.submit(fit_models, task) for task in todo]):
+                record(future.result())
     else:
-        for task in tasks:
-            results[task["label"]] = fit_models(task)
-            log(f"   finished {task['label'][0]} {task['label'][1]}")
+        for task in todo:
+            record(fit_models(task))
+    results = {task["label"]: results[task["label"]] for task in tasks}  # back in the order the tables expect
 
     # 1. The real data.
     real = results[("real", 0)]["fits"]

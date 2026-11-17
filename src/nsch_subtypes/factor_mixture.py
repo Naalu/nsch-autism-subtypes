@@ -243,9 +243,10 @@ def _update_conditions(slopes, intercepts, design, node_weight, node_success, ma
             hessian = (design * (node_weight * p * (1 - p))[:, None]).T @ design + 1e-6 * np.eye(n_dims + 1)
             step = np.linalg.solve(hessian, gradient)
             beta += step
+            beta[:n_dims] = np.clip(beta[:n_dims], -max_slope, max_slope)  # also keeps a bad step from running away
             if np.abs(step).max() < 1e-7:
                 break
-        slopes[j], intercepts[j] = np.clip(beta[:n_dims], -max_slope, max_slope), beta[n_dims]
+        slopes[j], intercepts[j] = beta[:n_dims], beta[n_dims]
     return slopes, intercepts
 
 
@@ -263,6 +264,8 @@ def _run_em(distinct, counts, nodes, slopes, intercepts, shares, means, covarian
         node_prior = prior.sum(axis=0)
         row_likelihood = likelihood @ node_prior
         log_likelihood = float(counts @ (np.log(row_likelihood) + log_scale))
+        if not np.isfinite(log_likelihood):  # a start that has broken down; the caller discards it
+            return slopes, intercepts, shares, means, covariances, -np.inf, iteration, False
         if abs(log_likelihood - previous) < tol:
             converged = True
             break
@@ -272,15 +275,14 @@ def _run_em(distinct, counts, nodes, slopes, intercepts, shares, means, covarian
 
         # M-step for the groups: shares, means and covariances from the expected counts.
         group_total = expected.sum(axis=1)
-        shares = group_total / n_children
+        group_total = np.maximum(group_total, 1e-6 * n_children)  # an emptied group keeps a token share instead of dividing by zero
+        shares = group_total / group_total.sum()
         means = (expected @ nodes) / group_total[:, None]
         for k in range(n_groups):
             centered = nodes - means[k]
             covariances[k] = (centered * expected[k][:, None]).T @ centered / group_total[k]
         if shared_spread:
             covariances[:] = np.einsum("k,kde->de", shares, covariances)
-        else:
-            covariances = np.stack([_floor_spread(covariance, MIN_GROUP_SD) for covariance in covariances])
 
         # M-step for the conditions, using each grid point's expected children and expected "yes" answers.
         node_weight = expected.sum(axis=0)
@@ -288,6 +290,10 @@ def _run_em(distinct, counts, nodes, slopes, intercepts, shares, means, covarian
         slopes, intercepts = _update_conditions(slopes, intercepts, design, node_weight, node_success, max_slope)
 
         slopes, intercepts, means, covariances = _standardize(slopes, intercepts, shares, means, covariances)
+        # Groups narrower than the grid can represent are widened to the floor. This matters when the
+        # data really are separate classes: the groups then try to shrink to points.
+        covariances = np.stack([_floor_spread(covariance, MIN_GROUP_SD) for covariance in covariances])
+        slopes = np.clip(slopes, -max_slope, max_slope)
     return slopes, intercepts, shares, means, covariances, log_likelihood, iteration, converged
 
 
@@ -404,7 +410,10 @@ def fit_factor_mixture(
         short_runs.append(run((trait.slopes, trait.intercepts, *groups), short_iter))
     # Stage 2: carry the best few on to convergence and keep the best of those.
     short_runs.sort(key=lambda result: -result[5])
-    finished = [result if result[7] else run(result[:5], max_iter) for result in short_runs[:n_finalists]]
+    finalists = [result for result in short_runs[:n_finalists] if np.isfinite(result[5])]
+    finished = [result if result[7] else run(result[:5], max_iter) for result in finalists]
+    if not any(np.isfinite(result[5]) for result in finished):
+        raise RuntimeError(f"no starting point gave a finite log-likelihood for {n_groups} groups")
     best = max(finished, key=lambda result: result[5])
     slopes, intercepts, shares, means, covariances, _, n_iter, converged = best
 
