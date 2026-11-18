@@ -1,6 +1,6 @@
 /*
- * One family (Atkinson Hyperlegible Next, designed for low-vision readers), one cool
- * off-white, one ink, one gray. Color is reserved for the four groups. Light mode only.
+ * One family (IBM Plex Sans: distinct I, l and 1, a plain zero, tabular figures), one
+ * cool off-white, one ink, one gray. Color is reserved for the four groups. Light mode only.
  */
 :root {
 	--bg: #f4f6f8;
@@ -13,7 +13,7 @@
 	--g2: #6b46c1;
 	--g3: #bf5a2a;
 
-	--font: 'Atkinson Hyperlegible Next', system-ui, sans-serif;
+	--font: 'IBM Plex Sans', system-ui, sans-serif;
 	--step--1: 0.875rem;
 	--step-0: 1.0625rem;
 	--step-1: 1.25rem;

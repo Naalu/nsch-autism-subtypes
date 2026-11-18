@@ -1,4 +1,4 @@
-<svelte:head><title>Methods and paper: types or degrees?</title></svelte:head>
+<svelte:head><title>Methods and paper: autistic children's co-occurring diagnoses</title></svelte:head>
 
 <section class="wide">
 	<h1>Methods and paper</h1>

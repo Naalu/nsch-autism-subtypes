@@ -1,25 +1,25 @@
 <script lang="ts">
-	import '@fontsource/atkinson-hyperlegible-next/400.css';
-	import '@fontsource/atkinson-hyperlegible-next/600.css';
-	import '@fontsource/atkinson-hyperlegible-next/700.css';
+	import '@fontsource/ibm-plex-sans/400.css';
+	import '@fontsource/ibm-plex-sans/600.css';
+	import '@fontsource/ibm-plex-sans/700.css';
 	import '../app.css';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 
 	let { children } = $props();
 
 	const pages = [
-		{ href: `${base}/`, label: 'Story' },
-		{ href: `${base}/explore/`, label: 'Explore' },
-		{ href: `${base}/methods/`, label: 'Methods and paper' }
-	];
+		{ route: '/', href: resolve('/'), label: 'Story' },
+		{ route: '/explore', href: resolve('explore/'), label: 'Explore' },
+		{ route: '/methods', href: resolve('methods/'), label: 'Methods and paper' }
+	] as const;
 </script>
 
 <header class="wide">
-	<a class="title" href="{base}/">Types or degrees?</a>
+	<a class="title" href={resolve('/')}>Autistic children's co-occurring diagnoses</a>
 	<nav aria-label="Pages">
 		{#each pages as p}
-			<a href={p.href} aria-current={page.url.pathname === p.href ? 'page' : undefined}>{p.label}</a>
+			<a href={p.href} aria-current={page.route.id === p.route ? 'page' : undefined}>{p.label}</a>
 		{/each}
 	</nav>
 	<p class="notice">A class project, not peer reviewed. Nothing here describes or diagnoses an individual child.</p>

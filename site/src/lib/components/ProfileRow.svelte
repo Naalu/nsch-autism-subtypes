@@ -3,8 +3,8 @@
 	shared by enough children that their answers are published.
 -->
 <script lang="ts">
-	import type { Condition } from '$lib/data';
-	import { CONDITION_FAMILIES, CONDITION_SHORT } from '$lib/groups';
+	import type { Condition } from '#lib/data.ts';
+	import { CONDITION_FAMILIES, CONDITION_SHORT } from '#lib/groups.ts';
 
 	let { answers, conditions }: { answers: string; conditions: Condition[] } = $props();
 

@@ -21,6 +21,27 @@ test('pointing at the middle of the map describes a child without a year', async
 	await expect(tip).not.toContainText(/20\d\d/);
 });
 
+test('clicking a child with many conditions pins it and shows them all', async ({ page }) => {
+	await page.goto('./');
+	const map = page.getByRole('application');
+	await map.scrollIntoViewIfNeeded();
+	const box = (await map.boundingBox())!;
+	const tip = map.locator('.tip');
+	// Children with several conditions sit up and to the right; find one whose list is shortened.
+	let found = false;
+	for (let fx = 0.55; fx < 0.9 && !found; fx += 0.02) {
+		await page.mouse.move(box.x + box.width * fx, box.y + box.height * 0.35);
+		found = (await tip.count()) > 0 && /and \d+ more/.test(await tip.innerText());
+	}
+	expect(found).toBe(true);
+	await page.mouse.down();
+	await page.mouse.up();
+	await tip.getByRole('button', { name: 'Show all' }).click();
+	await expect(tip).not.toContainText(/and \d+ more/);
+	await tip.getByRole('button', { name: 'Close' }).click();
+	await expect(tip).toHaveCount(0);
+});
+
 test('the arrow keys move between children', async ({ page }) => {
 	await page.goto('./');
 	const map = page.getByRole('application');

@@ -1,7 +1,7 @@
 <!-- The four group probabilities for one set of answers, as one bar, with the larger parts labeled. -->
 <script lang="ts">
-	import type { Group } from '$lib/data';
-	import { GROUP_COLORS, percent } from '$lib/groups';
+	import type { Group } from '#lib/data.ts';
+	import { GROUP_COLORS, percent } from '#lib/groups.ts';
 
 	let { probabilities, groups, labelMin = 0.08 }: { probabilities: number[]; groups: Group[]; labelMin?: number } = $props();
 </script>

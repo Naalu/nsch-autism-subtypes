@@ -2,7 +2,7 @@
  * The shapes of the JSON files in static/data, written by scripts/build_site_data.py,
  * and one loader that respects the GitHub Pages subpath.
  */
-import { base } from '$app/paths';
+import { asset } from '$app/paths';
 
 /** One entry per child, as columns, in a shuffled order. */
 export interface Children {
@@ -19,9 +19,8 @@ export interface Children {
 
 /** One entry per distinct set of 18 answers, most common first. */
 export interface Profiles {
-	min_count_for_answers: number;
-	/** "0"/"1" per condition in model order; null when fewer than min_count_for_answers children share it. */
-	answers: (string | null)[];
+	/** "0"/"1" per condition, in model order. */
+	answers: string[];
 	count: number[];
 	n_conditions: number[];
 	/** Probability of each of the four groups, in site order. */
@@ -55,9 +54,21 @@ export interface Model {
 
 export type Numbers = Record<string, { value: number; source: string }>;
 
+/** The files make site-data writes; SvelteKit checks each against static/data at compile time. */
+export type DataFile =
+	| 'children.json'
+	| 'profiles.json'
+	| 'model.json'
+	| 'clouds.json'
+	| 'evidence.json'
+	| 'outcomes.json'
+	| 'years.json'
+	| 'context.json'
+	| 'numbers.json';
+
 /** Fetch one of the site's data files. */
-export async function loadData<T>(name: string, fetcher: typeof fetch = fetch): Promise<T> {
-	const response = await fetcher(`${base}/data/${name}`);
+export async function loadData<T>(name: DataFile, fetcher: typeof fetch = fetch): Promise<T> {
+	const response = await fetcher(asset(`data/${name}`));
 	if (!response.ok) throw new Error(`Could not load ${name}: the server answered ${response.status}.`);
 	return (await response.json()) as T;
 }

@@ -1,14 +1,15 @@
 <!--
-	Every child as a dot on the two axes, drawn on a canvas. Hover, tap or (after focusing
-	the map) the arrow keys pick the nearest dot and show what the page may say about it;
-	see $lib/describe for the rule. Colored by most likely group, or by one condition.
+	Every child as a dot on the two axes, drawn on a canvas, colored by most likely group or
+	by one condition. Pointing at a dot (or, with the map focused, moving to it with the
+	arrow keys) shows a short description; clicking, tapping or Enter pins it so the full
+	list of conditions can be opened.
 -->
 <script lang="ts">
 	import { quadtree } from 'd3-quadtree';
-	import type { Children, Model, Profiles } from '$lib/data';
-	import { describeProfile, mostLikely, summarize } from '$lib/describe';
-	import { CONDITION_SHORT, CONFIDENT, FAINT, GROUP_COLORS, INK, percent } from '$lib/groups';
-	import { linear } from '$lib/scale';
+	import type { Children, Model, Profiles } from '#lib/data.ts';
+	import { abbreviate, describeProfile, mostLikely, sharedText, summarize } from '#lib/describe.ts';
+	import { CONDITION_SHORT, CONFIDENT, FAINT, GROUP_COLORS, INK, percent } from '#lib/groups.ts';
+	import { linear } from '#lib/scale.ts';
 
 	interface Props {
 		children: Children;
@@ -27,6 +28,8 @@
 	let canvas: HTMLCanvasElement | undefined = $state();
 	let overlay: HTMLCanvasElement | undefined = $state();
 	let hovered: number | null = $state(null);
+	let pinned: number | null = $state(null);
+	let expanded = $state(false);
 	let cursor: [number, number] | null = $state(null);
 
 	const size = $derived(Math.max(240, Math.min(width, 620)));
@@ -52,10 +55,9 @@
 				alpha[i] = sure ? 0.8 : 0.28;
 				emphasis[i] = sure ? 1 : 0;
 			} else {
-				const answers = profiles.answers[p];
-				const yes = answers !== null && answers[conditionIndex] === '1';
+				const yes = profiles.answers[p][conditionIndex] === '1';
 				fill[i] = yes ? INK : FAINT;
-				alpha[i] = yes ? 0.75 : answers === null ? 0.3 : 0.6;
+				alpha[i] = yes ? 0.75 : 0.6;
 				emphasis[i] = yes ? 1 : 0;
 			}
 		}
@@ -70,7 +72,10 @@
 			.addAll(Array.from({ length: children.n }, (_, i) => i))
 	);
 
-	const description = $derived(hovered === null ? null : describeProfile(children.profile[hovered], profiles, model));
+	/** The dot being described: the pinned one, otherwise the one under the pointer. */
+	const shown = $derived(pinned ?? hovered);
+	const description = $derived(shown === null ? null : describeProfile(children.profile[shown], profiles, model));
+	const brief = $derived(description ? abbreviate(description.conditions) : null);
 
 	const corners = $derived(
 		model.classes.map((g, i) => ({
@@ -124,9 +129,9 @@
 			ctx.stroke();
 			ctx.setLineDash([]);
 		}
-		if (hovered === null) return;
-		const x = sx(children.x[hovered]);
-		const y = sy(children.y[hovered]);
+		if (shown === null) return;
+		const x = sx(children.x[shown]);
+		const y = sy(children.y[shown]);
 		ctx.lineWidth = 2;
 		ctx.strokeStyle = '#ffffff';
 		ctx.beginPath();
@@ -139,17 +144,37 @@
 		ctx.stroke();
 	});
 
-	function pick(event: PointerEvent) {
+	function nearest(event: PointerEvent): number | null {
 		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-		hovered = tree.find(event.clientX - rect.left, event.clientY - rect.top, 12) ?? null;
+		return tree.find(event.clientX - rect.left, event.clientY - rect.top, 12) ?? null;
+	}
+
+	function move(event: PointerEvent) {
+		if (pinned !== null) return;
+		hovered = nearest(event);
 		cursor = null;
+	}
+
+	function press(event: PointerEvent) {
+		if ((event.target as HTMLElement).closest('.tip')) return;
+		pin(nearest(event));
+	}
+
+	function pin(index: number | null) {
+		pinned = index;
+		hovered = index;
+		expanded = false;
 	}
 
 	function key(event: KeyboardEvent) {
 		const moves: Record<string, [number, number]> = { ArrowLeft: [-STEP, 0], ArrowRight: [STEP, 0], ArrowUp: [0, STEP], ArrowDown: [0, -STEP] };
 		if (event.key === 'Escape') {
-			hovered = null;
+			pin(null);
 			cursor = null;
+			return;
+		}
+		if (event.key === 'Enter') {
+			pin(pinned === null ? hovered : null);
 			return;
 		}
 		const move = moves[event.key];
@@ -157,11 +182,13 @@
 		event.preventDefault();
 		const [cx, cy] = cursor ?? [0, 0];
 		cursor = [Math.max(-LIMIT, Math.min(LIMIT, cx + move[0])), Math.max(-LIMIT, Math.min(LIMIT, cy + move[1]))];
+		pinned = null;
+		expanded = false;
 		hovered = tree.find(sx(cursor[0]), sy(cursor[1]), 24) ?? null;
 	}
 
-	const tipLeft = $derived(hovered === null ? 0 : sx(children.x[hovered]));
-	const tipTop = $derived(hovered === null ? 0 : sy(children.y[hovered]));
+	const tipLeft = $derived(shown === null ? 0 : sx(children.x[shown]));
+	const tipTop = $derived(shown === null ? 0 : sy(children.y[shown]));
 </script>
 
 <figure class="map">
@@ -176,16 +203,19 @@
 			style:width="{size}px"
 			style:height="{size}px"
 			role="application"
-			aria-label="{label}. Focus and use the arrow keys to move between children; Escape clears."
+			aria-label="{label}. Use the arrow keys to move between children, Enter to pin one, Escape to clear."
 			aria-describedby="map-readout"
 			tabindex="0"
-			onpointermove={pick}
-			onpointerdown={pick}
-			onpointerleave={() => (hovered = null)}
+			onpointermove={move}
+			onpointerdown={press}
+			onpointerleave={() => {
+				if (pinned === null) hovered = null;
+			}}
 			onkeydown={key}
-			onblur={() => {
+			onblur={(event) => {
+				if ((event.relatedTarget as HTMLElement | null)?.closest('.tip')) return;
 				cursor = null;
-				hovered = null;
+				if (pinned === null) hovered = null;
 			}}
 		>
 			<canvas bind:this={canvas} style:width="{size}px" style:height="{size}px"></canvas>
@@ -200,17 +230,29 @@
 				{/each}
 			{/if}
 
-			{#if description}
-				<div class="tip" class:flip={tipLeft > size * 0.55} class:below={tipTop < size * 0.3} style:left="{tipLeft}px" style:top="{tipTop}px">
-					{#if description.conditions}
-						<p class="tip-head">
-							{description.conditions.length === 0 ? 'None of the 18 conditions' : description.conditions.join(', ')}
-						</p>
-						<p class="tip-note">{description.sharedBy} children share exactly these answers.</p>
+			{#if description && brief}
+				<div
+					class="tip"
+					class:pinned={pinned !== null}
+					class:flip={tipLeft > size * 0.55}
+					class:below={tipTop < size * 0.3}
+					style:left="{tipLeft}px"
+					style:top="{tipTop}px"
+				>
+					{#if description.conditions.length === 0}
+						<p class="tip-head">None of the 18 conditions</p>
 					{:else}
-						<p class="tip-head">{description.nConditions} of the 18 conditions</p>
-						<p class="tip-note">A rarer combination: fewer than {profiles.min_count_for_answers} children share it, so the conditions are not shown.</p>
+						<p class="tip-head">
+							{description.conditions.length}
+							{description.conditions.length === 1 ? 'condition' : 'conditions'}:
+							{#if expanded || brief.more === 0}
+								{description.conditions.join(', ')}
+							{:else}
+								{brief.first.join(', ')}, and {brief.more} more
+							{/if}
+						</p>
 					{/if}
+					<p class="tip-note">{sharedText(description.sharedBy)}</p>
 					<ul>
 						{#each description.chances.filter((c) => c.probability >= 0.05) as c}
 							<li>
@@ -219,6 +261,16 @@
 							</li>
 						{/each}
 					</ul>
+					{#if pinned === null}
+						{#if brief.more > 0}<p class="tip-hint">Click the dot to see all of them.</p>{/if}
+					{:else}
+						<div class="tip-actions">
+							{#if brief.more > 0}
+								<button type="button" onclick={() => (expanded = !expanded)}>{expanded ? 'Show fewer' : 'Show all'}</button>
+							{/if}
+							<button type="button" onclick={() => pin(null)}>Close</button>
+						</div>
+					{/if}
 				</div>
 			{/if}
 		</div>
@@ -236,7 +288,6 @@
 		<ul class="legend">
 			<li><span class="key" style:background={INK}></span>{CONDITION_SHORT[colorBy]}</li>
 			<li><span class="key" style:background={FAINT}></span>Not reported</li>
-			<li><span class="key faded" style:background={FAINT}></span>Rarer combination, answers not shown</li>
 		</ul>
 	{/if}
 </figure>
@@ -325,9 +376,6 @@
 		border-radius: 50%;
 		margin-right: 0.4rem;
 	}
-	.key.faded {
-		opacity: 0.4;
-	}
 	.tip {
 		position: absolute;
 		z-index: 2;
@@ -341,6 +389,28 @@
 		font-size: var(--step--1);
 		line-height: 1.4;
 		pointer-events: none;
+	}
+	.tip.pinned {
+		pointer-events: auto;
+		cursor: auto;
+	}
+	.tip-hint {
+		color: var(--ink-2);
+		margin: 0.4rem 0 0 !important;
+	}
+	.tip-actions {
+		display: flex;
+		gap: 0.5rem;
+		margin-top: 0.5rem;
+	}
+	.tip-actions button {
+		font: inherit;
+		color: var(--ink);
+		background: var(--bg);
+		border: 1px solid var(--rule);
+		border-radius: 4px;
+		padding: 0.15rem 0.6rem;
+		cursor: pointer;
 	}
 	.tip.flip {
 		transform: translate(calc(-100% - 14px), -50%);

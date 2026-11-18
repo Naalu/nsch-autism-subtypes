@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import ChildMap from '$lib/components/ChildMap.svelte';
-	import ProbabilityBar from '$lib/components/ProbabilityBar.svelte';
-	import ProfileRow from '$lib/components/ProfileRow.svelte';
-	import { loadData, type Children, type Model, type Numbers, type Profiles } from '$lib/data';
-	import { CONDITION_SHORT, percent } from '$lib/groups';
+	import ChildMap from '#lib/components/ChildMap.svelte';
+	import ProbabilityBar from '#lib/components/ProbabilityBar.svelte';
+	import ProfileRow from '#lib/components/ProfileRow.svelte';
+	import { loadData, type Children, type Model, type Numbers, type Profiles } from '#lib/data.ts';
+	import { CONDITION_SHORT, CONFIDENT, percent } from '#lib/groups.ts';
 
 	// The opening example: a common combination the four-group model nearly splits in half.
 	const EXAMPLE = '110000000000000000';
@@ -29,11 +29,19 @@
 	});
 
 	const example = $derived(data ? data.profiles.answers.indexOf(EXAMPLE) : -1);
+	/** Share of children whose most likely group has less than 80% probability. */
+	const uncertain = $derived.by(() => {
+		if (!data) return 0.37;
+		const { children, profiles } = data;
+		let count = 0;
+		for (const p of children.profile) if (Math.max(...profiles.class_probabilities[p]) < CONFIDENT) count++;
+		return count / children.n;
+	});
 	const n = $derived(data ? data.numbers.children.value.toLocaleString('en-US') : '8,891');
 </script>
 
 <svelte:head>
-	<title>Types or degrees? Autistic children's co-occurring diagnoses</title>
+	<title>Autistic children's co-occurring diagnoses: types or two scales?</title>
 </svelte:head>
 
 <article>
@@ -67,8 +75,8 @@
 				<ProbabilityBar probabilities={data.profiles.class_probabilities[example]} groups={data.model.classes} />
 			</div>
 			<p>
-				That near tie is the whole question in small. If children came in types, most rows of answers would point clearly to one of
-				them.
+				If children came in types, most rows of answers would point clearly to one group. This one does not, and it is not unusual:
+				for {percent(uncertain)} of the {n} children, no group gets as much as 80%.
 			</p>
 		{/if}
 		<p class="aside">
@@ -114,9 +122,6 @@
 				{#if colorBy === 'group'}
 					Faded dots are children the model places in a group with less than 80% probability. The percentages are each group's
 					estimated share of US autistic children aged 6 to 17.
-				{:else}
-					Children whose combination of answers is shared by fewer than {data.profiles.min_count_for_answers} children are drawn
-					faint, because their answers are not published.
 				{/if}
 				This view assumes positions follow a bell curve, which pulls any data into one round cloud, so the absence of gaps here is not
 				evidence either way. Step 4 comes back to that.
