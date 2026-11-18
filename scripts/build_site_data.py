@@ -36,7 +36,8 @@ Files, under ``--out`` (default ``site/static/data``)::
                     the group label adds to the axes
     years.json      each survey year: children per group in each map cell, and the
                     weighted group shares with intervals
-    context.json    the funnel, children per year, co-occurrence
+    context.json    the funnel, children per year, co-occurrence, and the story's opening
+                    example: the set of answers with ADHD and anxiety only
     numbers.json    every number quoted in the site's text, with the table it came from
 """
 
@@ -85,6 +86,9 @@ CLASS_ORDER = {
 }
 SHORT_NAMES = ["fewer diagnoses", "developmental and language", "mental health and behavior", "both"]
 KEYS = ["fewer", "developmental", "mental_health", "both"]
+
+# The story opens on this set of answers: common, and split almost evenly between two groups.
+STORY_EXAMPLE = ("adhd", "anxiety")
 OUTCOMES = {
     "severity": ("severity", lambda column: column == "severe", "autism rated severe by the parent"),
     "forgone_care": ("forgone_care", lambda column: column == "yes", "needed health care in the past year and did not get it"),
@@ -367,6 +371,8 @@ def main() -> None:
 
     # ---- context -----------------------------------------------------------------------------------------
     summary = pd.read_csv(tables / "summary.csv", header=None, index_col=0)[1]
+    example_answers = "".join("1" if flag in STORY_EXAMPLE else "0" for flag in flags)
+    example = profile_strings(profiles).index(example_answers)
     write(
         args.out,
         "context.json",
@@ -377,6 +383,11 @@ def main() -> None:
             "cooccurrence": {
                 "conditions": pd.read_csv(tables / "cooccurrence.csv", index_col=0).columns.tolist(),
                 "matrix": pd.read_csv(tables / "cooccurrence.csv", index_col=0).to_numpy(),
+            },
+            "example": {
+                "answers": example_answers,
+                "count": int(counts[example]),
+                "class_probabilities": np.round(class_probabilities[profile_of_child == example][0], 3),
             },
         },
     )
@@ -395,6 +406,7 @@ def main() -> None:
         "distinct_profiles": (len(profiles), "analysis table"),
         "share_with_any_condition": (float((X.sum(axis=1) > 0).mean()), "analysis table"),
         "mean_conditions": (float(X.sum(axis=1).mean()), "analysis table"),
+        "share_best_fit_below_80": (float((class_probabilities.max(axis=1) < 0.8).mean()), "four-class fit"),
         "ari_kmeans": (float(checks["second method (k-means)"]), "checks_by_k.csv"),
         "ari_heldout_years": (float(checks["held-out years"]), "checks_by_k.csv"),
         "ari_2025": (float(checks["2025 forward test"]), "checks_by_k.csv"),

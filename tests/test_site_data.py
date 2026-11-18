@@ -226,3 +226,10 @@ def test_numbers_keys_are_plain_identifiers():
     keys = load("numbers.json")
     assert all(key.isidentifier() and key == key.lower() for key in keys)
     assert {f"weighted_share_{key}" for key in ("fewer", "developmental", "mental_health", "both")} <= set(keys)
+
+
+def test_story_example_matches_the_profiles_file():
+    example, profiles = load("context.json")["example"], load("profiles.json")
+    i = profiles["answers"].index(example["answers"])
+    assert example["count"] == profiles["count"][i] and example["class_probabilities"] == profiles["class_probabilities"][i]
+    assert example["answers"].count("1") == 2
