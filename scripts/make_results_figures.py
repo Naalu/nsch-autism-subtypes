@@ -20,7 +20,7 @@ the parent folder)::
     checks_by_k.png              every agreement and stability check against K, with intervals
     model_fit.png                in-sample BIC and held-out likelihood against number of parameters
     map.png                      children in the two-dimensional space, with condition directions and classes
-    figure1_map.png              the paper's Figure 1: one cloud on the two named axes, classes as regions, cut lines
+    figure1_map.png              the paper's Figure 1: children on the two named axes, classes as regions, cut lines
     severity_map.png             share rated severe in each region of the map
     forgone_care_map.png, er_visits_map.png   the same for going without needed care and for any ER visit
     outcomes_by_class.png        each held-out outcome by class, with 95% intervals
@@ -235,7 +235,7 @@ def draw_map(positions_path: Path, table: pd.DataFrame, fit, order: list[int], l
 def draw_figure1(
     positions_path: Path, table: pd.DataFrame, fit, order: list[int], label_of: dict, colors: dict, shares: pd.DataFrame, cut_points, path: Path
 ) -> None:
-    """Figure 1: one cloud of children on the two axes, the classes as its regions, uncertain children faded.
+    """Figure 1: the children on the two axes, the classes as regions, uncertain children faded.
 
     The developmental-language axis goes across and the psychiatric axis up,
     whichever order the trait model returned them in. ``cut_points`` (from
