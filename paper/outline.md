@@ -1,6 +1,6 @@
 # Paper outline
 
-Working title: Co-occurring conditions in a national sample of autistic children vary along two continuous axes
+Working title: Subtypes or scales? Co-occurring diagnoses in autistic children
 
 Alternatives: Four profiles on two axes: what replicates when co-occurring conditions in a national sample of autistic children are clustered. Or: Checking autism subtypes against a national survey: what replicates and what does not
 
