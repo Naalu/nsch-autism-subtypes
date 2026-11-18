@@ -1,4 +1,4 @@
-<svelte:head><title>Explore: co-occurring diagnoses in autistic children</title></svelte:head>
+<svelte:head><title>Explore: Subtypes or scales?</title></svelte:head>
 
 <section class="wide">
 	<h1>Explore</h1>

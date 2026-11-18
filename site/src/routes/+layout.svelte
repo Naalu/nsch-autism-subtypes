@@ -19,7 +19,7 @@
 </script>
 
 <header class="wide">
-	<a class="title" href={resolve('/')}>Co-occurring diagnoses in autistic children</a>
+	<a class="title" href={resolve('/')}>Subtypes or scales?</a>
 	<nav aria-label="Pages">
 		{#each pages as p}
 			<a href={p.href} aria-current={page.route.id === p.route ? 'page' : undefined}>{p.label}</a>

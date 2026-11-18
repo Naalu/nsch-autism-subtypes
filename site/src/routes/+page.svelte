@@ -42,7 +42,7 @@
 </script>
 
 <svelte:head>
-	<title>{TITLE}</title>
+	<title>Subtypes or scales? Co-occurring diagnoses in autistic children</title>
 </svelte:head>
 
 <article>
