@@ -61,16 +61,23 @@ DEVELOPMENTAL = ["dev_delay", "learning", "speech", "intellectual"]
 PSYCHIATRIC = ["anxiety", "adhd", "depression", "behavior"]
 
 # One color per axis and per class, used by every figure. The developmental-
-# language axis is blue and the psychiatric axis purple; a class high on one
+# language axis is blue and the mental-health axis purple; a class high on one
 # takes that axis's color, the class high on both takes rust, and the class
 # low on both gray. Names outside the two-by-two (other K) fall back to the
 # general palette in class order.
-AXIS_COLORS = {"developmental-language": CYAN, "psychiatric": PURPLE}
+AXIS_COLORS = {"developmental-language": CYAN, "mental-health": PURPLE}
+# Each class's name describes its pattern of diagnoses; figures show the short name.
+SHORT_NAMES = {
+    "fewer co-occurring diagnoses": "fewer diagnoses",
+    "mostly developmental and language diagnoses": "developmental and language",
+    "mostly mental-health and behavioral diagnoses": "mental health and behavior",
+    "both kinds of diagnoses": "both",
+}
 NAME_COLORS = {
-    "fewer co-occurring conditions": "#8a8f9e",
-    "developmental-language": CYAN,
-    "psychiatric": PURPLE,
-    "developmental and psychiatric": RUST,
+    "fewer diagnoses": "#8a8f9e",
+    "developmental and language": CYAN,
+    "mental health and behavior": PURPLE,
+    "both": RUST,
 }
 SEVERITY_COLORS = {"mild": "#f6c89f", "moderate": RUST, "severe": "#5a2a0e"}
 
@@ -89,7 +96,7 @@ def axis_roles(slopes: np.ndarray, flags: list[str]) -> list[str]:
     for d in range(slopes.shape[1]):
         dev = np.abs(slopes[[flags.index(f) for f in DEVELOPMENTAL], d]).mean()
         psych = np.abs(slopes[[flags.index(f) for f in PSYCHIATRIC], d]).mean()
-        roles.append("developmental-language" if dev > psych else "psychiatric")
+        roles.append("developmental-language" if dev > psych else "mental-health")
     return roles
 
 
@@ -107,19 +114,21 @@ def name_classes(rates: pd.DataFrame) -> pd.DataFrame:
     names = []
     for i in rates.index:
         if dev[i] >= 0.5 and psych[i] >= 0.5:
-            names.append("developmental and psychiatric")
+            names.append("both kinds of diagnoses")
         elif dev[i] >= 0.5:
-            names.append("developmental-language")
+            names.append("mostly developmental and language diagnoses")
         elif psych[i] >= 0.5:
-            names.append("psychiatric")
+            names.append("mostly mental-health and behavioral diagnoses")
         else:
-            names.append("fewer co-occurring conditions")
+            names.append("fewer co-occurring diagnoses")
     out = pd.DataFrame({"class": rates.index, "dev_marker_rate": dev.round(3), "psych_marker_rate": psych.round(3), "name": names})
+    out["short_name"] = out["name"].map(SHORT_NAMES)
     for _, group in out.groupby("name"):
         if len(group) > 1:
             for i in group.index:
-                top = rates.loc[i].sort_values(ascending=False).index[:2]
-                out.loc[i, "name"] = f"{out.loc[i, 'name']} ({', '.join(top)})"
+                top = ", ".join(rates.loc[i].sort_values(ascending=False).index[:2])
+                out.loc[i, "name"] = f"{out.loc[i, 'name']} ({top})"
+                out.loc[i, "short_name"] = f"{out.loc[i, 'short_name']} ({top})"
     return out
 
 
@@ -205,7 +214,7 @@ def draw_map(positions_path: Path, table: pd.DataFrame, fit, order: list[int], l
     ax = axes[0]
     ax.hexbin(xy[:, 0], xy[:, 1], gridsize=38, extent=(-3.5, 3.5, -3.5, 3.5), cmap="Greys", mincnt=1, linewidths=0)
     scale = 2.8 / np.linalg.norm(slopes, axis=1).max()
-    for group, color in ((DEVELOPMENTAL, AXIS_COLORS["developmental-language"]), (PSYCHIATRIC, AXIS_COLORS["psychiatric"])):
+    for group, color in ((DEVELOPMENTAL, AXIS_COLORS["developmental-language"]), (PSYCHIATRIC, AXIS_COLORS["mental-health"])):
         for condition in group:  # the marker conditions used to name the classes
             end = slopes[flags.index(condition)] * scale
             ax.annotate("", xy=end, xytext=(0, 0), arrowprops={"arrowstyle": "->", "color": color, "lw": 1.2})
@@ -237,7 +246,7 @@ def draw_figure1(
 ) -> None:
     """Figure 1: the children on the two axes, the classes as regions, uncertain children faded.
 
-    The developmental-language axis goes across and the psychiatric axis up,
+    The developmental-language axis goes across and the mental-health axis up,
     whichever order the trait model returned them in. ``cut_points`` (from
     step 12, on posterior-mean scores) are drawn as the two lines that best
     split the classes into quadrants.
@@ -247,7 +256,7 @@ def draw_figure1(
         return
     xy, slopes, flags = loaded
     roles = axis_roles(slopes, flags)
-    if roles == ["psychiatric", "developmental-language"]:
+    if roles == ["mental-health", "developmental-language"]:
         xy, slopes = xy[:, ::-1], slopes[:, ::-1]
         cut_points = None if cut_points is None else np.asarray(cut_points)[::-1]
     names = axis_names(slopes, flags)
@@ -303,7 +312,7 @@ def draw_outcome_map(positions_path: Path, table: pd.DataFrame, has_outcome: np.
         return
     xy, slopes, flags = loaded
     roles = axis_roles(slopes, flags)
-    if roles == ["psychiatric", "developmental-language"]:
+    if roles == ["mental-health", "developmental-language"]:
         xy, slopes = xy[:, ::-1], slopes[:, ::-1]
     names = axis_names(slopes, flags)
     fig, ax = plt.subplots(figsize=(6.6, 5.6))
@@ -694,10 +703,10 @@ def main() -> None:
     names["n_children_modal"] = np.bincount(fit.labels, minlength=k)
     names["weighted_share"] = shares["share"].round(3).to_numpy()
     names.to_csv(tables_dir / f"class_names_k{k}.csv", index=False)
-    label_of = dict(zip(names["class"], names["name"], strict=True))
+    label_of = dict(zip(names["class"], names["short_name"], strict=True))
     log("class names:\n" + names.to_string(index=False))
     order = list(names.sort_values(["dev_marker_rate", "psych_marker_rate"]).index)
-    canonical = list(NAME_COLORS)  # low on both, developmental, psychiatric, high on both
+    canonical = list(NAME_COLORS)  # low on both, developmental, mental health, high on both
     if all(label_of[c] in canonical for c in order):
         order = sorted(order, key=lambda c: canonical.index(label_of[c]))
     colors = class_colors(order, label_of)
@@ -719,7 +728,7 @@ def main() -> None:
         xs = [flags.index(f) for f in group]
         ax.plot([min(xs) - 0.45, max(xs) + 0.45], [-0.75, -0.75], color=color, lw=3, clip_on=False)
     ax.set_title(
-        f"Condition rates by latent class, K={k}. Brackets: psychiatric (purple) and developmental-language (blue) marker conditions used to name the classes.",
+        f"Condition rates by latent class, K={k}. Brackets: mental-health (purple) and developmental-language (blue) markers used to name the classes.",
         fontsize=8,
         loc="left",
         pad=14,
@@ -802,7 +811,7 @@ def main() -> None:
             ax.bar(xs + offset, d["share"], width=0.34, color=color, label=label)
             ax.errorbar(xs + offset, d["share"], yerr=[d["share"] - d["ci_low"], d["ci_high"] - d["share"]], fmt="none", ecolor=INK, capsize=3, lw=1)
         ax.set_xticks(xs)
-        ax.set_xticklabels([label_of[c].replace(" and ", "\nand ").replace(" co-occurring", "\nco-occurring") for c in order], fontsize=8)
+        ax.set_xticklabels([label_of[c].replace(" and ", "\nand ") for c in order], fontsize=8)
         for tick, c in zip(ax.get_xticklabels(), order, strict=True):
             tick.set_color(colors[c])
         ax.set_ylabel("weighted share, with 95% CI")

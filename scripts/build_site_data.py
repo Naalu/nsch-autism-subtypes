@@ -2,7 +2,7 @@
 
 The website (``site/``) shows the analysis as interactive figures: every
 child as a dot on the two axes, recolored by group, by the number of groups
-asked for, by which method drew the groups, and so on. This script gathers
+asked for, or by condition, and the groups year by year. This script gathers
 what those figures need from the result folders and the committed tables
 and writes it as a handful of small JSON files. It fits nothing new except
 the two simulated clouds the site shows beside the real one, which go
@@ -10,9 +10,10 @@ through the same steps as the real children (the latent trait model, then
 one draw of each child's position).
 
 What is published about a child, and what is not, is set out at the top of
-``src/nsch_subtypes/site_data.py``. In short: position, survey year, age
-band and condition profile; no identifiers, no weights, and outcomes only as
-shares over map cells with at least 20 children.
+``src/nsch_subtypes/site_data.py``. In short: position and condition
+profile, with the answers of profiles shared by fewer than 10 children
+withheld; no identifiers, no weights, no survey year or age; years only as
+counts over map cells, and outcomes only as rates by group.
 
 Run it after the pipeline, on the machine that holds the result folders::
 
@@ -20,19 +21,23 @@ Run it after the pipeline, on the machine that holds the result folders::
 
 Files, under ``--out`` (default ``site/static/data``)::
 
-    children.json   one entry per child: position (drawn two ways), profile, year, age band (shuffled)
-    profiles.json   one entry per distinct condition profile: answers, count, group
-                    probabilities, and its group under each K, under k-means and under
-                    the two-group factor mixture model
-    model.json      what the page needs to place a new profile: conditions, the four
-                    classes' rates and shares, the latent trait slopes and intercepts
+    children.json   one entry per child: position (drawn two ways) and profile (shuffled)
+    profiles.json   one entry per distinct condition profile: answers (withheld when rare),
+                    count, number of conditions, group probabilities, and its group under
+                    each K, under k-means and under the two-group factor mixture model
+    model.json      what the page needs to place a set of answers: conditions, the four
+                    groups' names, rates and shares, the latent trait slopes and
+                    intercepts, and each K's groups with the color slot that keeps a
+                    group's color as K changes
     clouds.json     2,500 children each from the real data, a simulated continuum and
                     simulated four classes, each drawn two ways, for the side-by-side comparison
     evidence.json   the checks: replication against simulation, stability by K, shape
                     of the cloud, model comparison, factor mixture
-    outcomes.json   severity, missed care and emergency visits: map surfaces, rates by
-                    class, and what the group label adds to the axes
-    context.json    the funnel, co-occurrence, class shares by year, example rows
+    outcomes.json   severity, missed care and emergency visits: rates by group, and what
+                    the group label adds to the axes
+    years.json      each survey year: children per group in each map cell, and the
+                    weighted group shares with intervals
+    context.json    the funnel, children per year, co-occurrence
     numbers.json    every number quoted in the site's text, with the table it came from
 """
 
@@ -52,13 +57,17 @@ from nsch_subtypes.lca import simulate_classes
 from nsch_subtypes.partition import cluster_kmeans
 from nsch_subtypes.site_data import (
     DEVELOPMENTAL,
+    MIN_PROFILE,
+    MIN_YEAR_CELL,
     PSYCHIATRIC,
     assert_no_identifiers,
     axis_alignment,
+    binned_counts,
     children_columns,
+    coarsened,
+    color_slots,
     distinct_profiles,
     order_by_size,
-    outcome_surface,
     per_profile,
     profile_strings,
     ranges_by,
@@ -67,14 +76,18 @@ from nsch_subtypes.site_data import (
 )
 from nsch_subtypes.validate import adjusted_rand_index
 
-# The four classes in the order the site lists them, and how each is recognized:
-# (high on the developmental markers, high on the psychiatric markers).
+# The four groups in the order the site lists them, and how each is recognized:
+# (high on the developmental-language markers, high on the mental-health markers).
+# The names describe the pattern of diagnoses, as in the paper; the short names
+# are for legends, and the keys for numbers.json.
 CLASS_ORDER = {
-    "fewer co-occurring conditions": (False, False),
-    "developmental-language": (True, False),
-    "psychiatric": (False, True),
-    "developmental and psychiatric": (True, True),
+    "fewer co-occurring diagnoses": (False, False),
+    "mostly developmental and language diagnoses": (True, False),
+    "mostly mental-health and behavioral diagnoses": (False, True),
+    "both kinds of diagnoses": (True, True),
 }
+SHORT_NAMES = ["fewer diagnoses", "developmental and language", "mental health and behavior", "both"]
+KEYS = ["fewer", "developmental", "mental_health", "both"]
 OUTCOMES = {
     "severity": ("severity", lambda column: column == "severe", "autism rated severe by the parent"),
     "forgone_care": ("forgone_care", lambda column: column == "yes", "needed health care in the past year and did not get it"),
@@ -223,19 +236,22 @@ def main() -> None:
         "covariances": np.einsum("ba,kbc,cd->kad", mixture_alignment, mixture["covariances_shared_k2"], mixture_alignment),
     }
 
+    slots = color_slots(labels_by_k, reference_k=4)
     n_profiles = len(profiles)
-    children = children_columns(positions, sharp_positions, profile_of_child, table["year"].to_numpy(), table["age"].to_numpy(), seed=args.seed)
+    children = children_columns(positions, sharp_positions, profile_of_child, seed=args.seed)
     write(args.out, "children.json", {"n": n, **children}, digits=2)
     write(
         args.out,
         "profiles.json",
         {
-            "answers": profile_strings(profiles),
+            "min_count_for_answers": MIN_PROFILE,
+            "answers": profile_strings(profiles, counts),
             "count": counts,
-            "class_probabilities": np.round(per_profile(class_probabilities, profile_of_child, n_profiles), 3),
+            "n_conditions": profiles.sum(axis=1),
+            "class_probabilities": coarsened(per_profile(class_probabilities, profile_of_child, n_profiles), counts),
             "label_by_k": {str(k): per_profile(labels, profile_of_child, n_profiles) for k, labels in labels_by_k.items()},
             "kmeans_label": per_profile(kmeans_labels, profile_of_child, n_profiles),
-            "mixture_probability": np.round(per_profile(mixture["probabilities_shared_k2"][:, 0], profile_of_child, n_profiles), 3),
+            "mixture_probability": coarsened(per_profile(mixture["probabilities_shared_k2"][:, 0], profile_of_child, n_profiles), counts),
         },
         digits=3,
     )
@@ -250,11 +266,12 @@ def main() -> None:
             "conditions": [{"flag": flag, "label": codebook.loc[flag, "label"], "prevalence": float(X[:, j].mean())} for j, flag in enumerate(flags)],
             "axes": {
                 "x": {"name": "developmental-language", "markers": list(DEVELOPMENTAL)},
-                "y": {"name": "psychiatric", "markers": list(PSYCHIATRIC)},
+                "y": {"name": "mental-health", "markers": list(PSYCHIATRIC)},
             },
             "classes": [
                 {
                     "name": name,
+                    "short_name": SHORT_NAMES[i],
                     "share_of_children": float(four.class_sizes[from_site_order[i]]),
                     "weighted_share": float(class_names.loc[name, "weighted_share"]),
                     "rates": four.condition_rates[from_site_order[i]],
@@ -266,6 +283,7 @@ def main() -> None:
             "by_k": [
                 {
                     "k": k,
+                    "color_slot": slots[k],
                     "shares": np.bincount(labels_by_k[k], minlength=k) / n,
                     "centers": [positions[labels_by_k[k] == c].mean(axis=0) for c in range(k)],
                     "least_stable_jaccard": float(stability.loc[k, "min_jaccard"]) if k in stability.index else None,
@@ -326,19 +344,33 @@ def main() -> None:
         outcomes[key] = {
             "description": description,
             "overall": share_with_interval(has[answered]),
-            "surface": outcome_surface(positions, has, answered),
             "by_class": [{"class": name, **share_with_interval(has[answered & (labels_by_k[4] == i)])} for i, name in enumerate(CLASS_ORDER)],
             "models": records(tables / f"outcome_models_{key}.csv"),
         }
     write(args.out, "outcomes.json", {"outcomes": outcomes, "heldout_2025": records(tables / "outcome_heldout_2025.csv")})
 
-    # ---- context -----------------------------------------------------------------------------------------
-    summary = pd.read_csv(tables / "summary.csv", header=None, index_col=0)[1]
-    example_raw = pd.read_csv(tables / "raw_rows_2024.csv")
-    example_processed = pd.read_csv(tables / "processed_rows_2024.csv")
+    # ---- the groups year by year ------------------------------------------------------------------------
     shares_by_year = pd.read_csv(tables / "shares_by_year.csv")
     # The table numbers classes as the run that made it did; its own names file says which is which.
     shares_by_year["class"] = shares_by_year["class"].map(pd.read_csv(tables / "class_names_k4.csv").set_index("class")["name"])
+    years = table["year"].to_numpy()
+    write(
+        args.out,
+        "years.json",
+        {
+            "cell": 0.75,
+            "min_cell": MIN_YEAR_CELL,
+            "groups": list(CLASS_ORDER),
+            "maps": [
+                {"year": int(year), "n": int((years == year).sum()), "cells": binned_counts(positions[years == year], labels_by_k[4][years == year], 4)}
+                for year in sorted(set(years.tolist()))
+            ],
+            "weighted_shares": shares_by_year[["year", "n", "class", "share", "ci_low", "ci_high"]].to_dict(orient="records"),
+        },
+    )
+
+    # ---- context -----------------------------------------------------------------------------------------
+    summary = pd.read_csv(tables / "summary.csv", header=None, index_col=0)[1]
     write(
         args.out,
         "context.json",
@@ -349,12 +381,6 @@ def main() -> None:
             "cooccurrence": {
                 "conditions": pd.read_csv(tables / "cooccurrence.csv", index_col=0).columns.tolist(),
                 "matrix": pd.read_csv(tables / "cooccurrence.csv", index_col=0).to_numpy(),
-            },
-            "shares_by_year": shares_by_year[["year", "n", "class", "share", "ci_low", "ci_high"]].to_dict(orient="records"),
-            # The five example children from the data overview, with only the survey questions and the flags.
-            "example_rows": {
-                "raw": example_raw[[c for c in example_raw.columns if c.startswith("k2q") or c == "downsyn"]].to_dict(orient="records"),
-                "processed": example_processed[[c for c in example_processed.columns if c in flags or c == "severity"]].to_dict(orient="records"),
             },
         },
     )
@@ -386,8 +412,8 @@ def main() -> None:
         "third_axis_bic": (float(trait_bic[3] - trait_bic[2]), "model_comparison.csv"),
         "shape_gain_real": (float(shape.loc[shape["data"] == "real", "improvement"].iloc[0]), "latent_density.csv"),
     }
-    for name in CLASS_ORDER:
-        numbers[f"weighted_share: {name}"] = (float(class_names.loc[name, "weighted_share"]), "class_names_k4.csv")
+    for key, name in zip(KEYS, CLASS_ORDER, strict=True):
+        numbers[f"weighted_share_{key}"] = (float(class_names.loc[name, "weighted_share"]), "class_names_k4.csv")
     write(args.out, "numbers.json", {key: {"value": value, "source": source} for key, (value, source) in numbers.items() if value is not None})
     log(f"wrote the site data to {args.out}")
 

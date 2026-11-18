@@ -2,10 +2,10 @@
 
 Why this check exists
 ---------------------
-At K=4 the psychiatric class is the oldest (mean age about 13) and the
+At K=4 the mental-health class is the oldest (mean age about 13) and the
 developmental class the youngest (about 10.6). Anxiety and depression are
 diagnosed more as children get older; developmental delay is diagnosed early.
-So a skeptic could say the "psychiatric axis" is partly just "older child".
+So a skeptic could say the "mental-health axis" is partly just "older child".
 
 What happens here
 -----------------
@@ -19,7 +19,7 @@ What happens here
 
 If the same four corners appear in both bands with similar profiles, the axes
 are not an age artifact. Class shares are allowed to differ between bands
-(older children will have more psychiatric diagnoses); profiles should not.
+(older children will have more mental-health diagnoses); profiles should not.
 
 Outputs, under ``--results``::
 

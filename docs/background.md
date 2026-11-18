@@ -139,7 +139,7 @@ Three smaller checks: refitting with the survey weights (we normally fit unweigh
 
 ### "Groups, or scales?" (the continuous model)
 
-A latent class model says each child belongs to one of K hidden types. The alternative is that there are no types, only a few hidden scales: each child sits somewhere on, say, a "developmental" scale and a "psychiatric" scale, and the higher a child sits on a scale, the more likely the conditions tied to that scale. This is a latent trait model (also called binary factor analysis or multidimensional item response theory). With D scales it has one slope per condition per scale, saying how strongly that condition depends on that scale, and one intercept per condition. Each child gets a score on each scale instead of a class.
+A latent class model says each child belongs to one of K hidden types. The alternative is that there are no types, only a few hidden scales: each child sits somewhere on, say, a "developmental" scale and a "mental-health" scale, and the higher a child sits on a scale, the more likely the conditions tied to that scale. This is a latent trait model (also called binary factor analysis or multidimensional item response theory). With D scales it has one slope per condition per scale, saying how strongly that condition depends on that scale, and one intercept per condition. Each child gets a score on each scale instead of a class.
 
 Both models give a likelihood for the same 0/1 table, so they can be compared directly. Three comparisons are used (`scripts/12_dimensions.py`):
 
