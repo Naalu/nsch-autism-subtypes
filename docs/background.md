@@ -153,6 +153,14 @@ The continuous model assumes children's positions on its two scales follow a bel
 
 The estimate is always a bit lumpy, even when the truth is a smooth bell curve, so the number only means something next to a yardstick. We make fake datasets of the same size from the continuous model (no clumps) and from the four-class model (four tight clumps), run each through the same estimate, and see where the real data fall between them.
 
+### "Once the scales are in, do groups still help?" (the factor mixture model)
+
+The class model and the continuous model are two extremes: nothing but groups, or no groups at all. A factor mixture model sits between them. It keeps the two scales, and each condition depends on a child's position exactly as in the continuous model, but positions come from several bell curves instead of one, each with its own center. A child is spread along the scales and also belongs, with some probability, to one of the bunches. With one bell curve the model is the continuous model, so the question "do groups add anything once the scales are in?" becomes a comparison between two fits of the same kind: one bunch against two, three or four.
+
+`scripts/17_factor_mixture.py` fits these with our own EM code (`src/nsch_subtypes/factor_mixture.py`). The main version lets the bunches differ only in where they sit. A second version also lets them differ in how spread out they are, so that a group cannot hide by being wider or narrower than the rest. As everywhere else, the same models are fit to fake datasets with no groups and with four real groups, because a mixture will describe any lopsided cloud a little better than one bell curve does, and the size of "a little" has to be measured.
+
+On our data a second bunch helps slightly, more than it does in data with no groups and far less than it does in data with four groups. More bunches, or bunches with their own spreads, do not help.
+
 ### "Would a continuum pass the same checks?" (calibration by simulation)
 
 Passing a replication check means the partition comes back in other children. It does not by itself mean the pieces are groups, because a smooth cloud cut into four pieces also comes back: cut it the same way in a new sample and you get nearly the same four pieces. To see how much that matters here, `scripts/15_replication_calibration.py` makes fake datasets the same size as ours, five from the continuous model (no groups) and five from the four-class model (four real groups), keeping each real child's survey year and age so the splits are the real ones. It runs the held-out-year, 2025, age-band and k-means checks on each fake dataset exactly as on the real one. The real scores are then read against the two ranges: a score inside the continuum's range says the check cannot tell groups from a continuum at this K. `scripts/14_shape_and_stability.py` does the same for the bootstrap, so that "every class is stable" can be read the same way.

@@ -13,8 +13,9 @@
 # reruns the replication checks on data simulated from a continuum and from
 # the class model (10 to 15 minutes). Then step 13 applies the K rule across
 # every folder that has a bootstrap, step 14 calibrates the shape and
-# stability checks by simulation (about an hour), and the results figures
-# are drawn for the chosen K.
+# stability checks by simulation (about an hour), step 17 fits the factor
+# mixture models to real and simulated data (1 to 2 hours), and the results
+# figures are drawn for the chosen K.
 #
 # The default backend is our from-scratch code. With BACKEND=reference the
 # folders are results_reference/ and results_reference_k{K}/ instead. When
@@ -36,6 +37,7 @@ if [ ${#KS[@]} -eq 0 ]; then KS=(4 5 6 7 8); fi
 BACKEND="${BACKEND:-ours}"
 STARTS="${STARTS:-20}"
 NBOOT="${NBOOT:-200}"
+JOBS="${JOBS:-2}"
 PY="uv run python"
 
 if [ "$BACKEND" = "reference" ]; then MAIN="results_reference"; PREFIX="results_reference_k"; else MAIN="results"; PREFIX="results_k"; fi
@@ -96,6 +98,10 @@ done
 if [ -f "$MAIN/heldout_selection.csv" ]; then REUSE=(--reuse-heldout); else REUSE=(); fi
 step "step 13, held-out likelihood and the K rule" $PY scripts/13_heldout_selection.py --results "$MAIN" --backend "$BACKEND" "${REUSE[@]}"
 step "step 14, shape of the latent space and stability under known truth" $PY scripts/14_shape_and_stability.py --results "$MAIN" --backend "$BACKEND"
+# Step 17 uses our own code only; the reference backend has no factor mixture model.
+if [ "$BACKEND" != "reference" ]; then
+    step "step 17, factor mixture models on real and simulated data" $PY scripts/17_factor_mixture.py --results "$MAIN" --jobs "$JOBS"
+fi
 # Figure generation routes results_reference inputs to reports/figures/results_reference/
 # and reports/tables/results_reference/, so the reference run never overwrites the main figures.
 step "results figures" $PY scripts/make_results_figures.py --results "$MAIN"

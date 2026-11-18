@@ -561,6 +561,69 @@ def draw_replication_vs_simulation(calibration_csv: Path, path: Path) -> None:
     plt.close(fig)
 
 
+def draw_factor_mixture(calibration_csv: Path, fits_npz: Path, flags: list[str], n_children: int, path: Path) -> None:
+    """Step 17 in two panels: what adding groups to the two axes buys, and where the two-group model puts them.
+
+    Left: the gain in log-likelihood over the one-group model (the latent
+    trait model) for 2, 3 and 4 groups with a shared spread, on the real data
+    and on the simulated datasets. The dotted line is the gain BIC asks for
+    before it prefers the larger model. Right: the two groups of the
+    shared-spread model as ellipses holding about 39% and 86% of each
+    group, over the single bell curve of the one-group model.
+    """
+    from matplotlib.patches import Ellipse
+
+    table = pd.read_csv(calibration_csv)
+    fits = np.load(fits_npz)
+    kinds = [kind for kind in table["data"].unique() if kind != "real"]
+    colors = dict(zip(kinds, [CYAN, PURPLE], strict=False))
+    groups = sorted(table["groups"].unique())
+    fig, (left, right) = plt.subplots(1, 2, figsize=(9.6, 4.0), gridspec_kw={"width_ratios": [1.15, 1]})
+
+    for kind in kinds:
+        subset = table[table["data"] == kind].groupby("groups")["log_likelihood_gain"]
+        low, high = subset.min().reindex(groups).clip(lower=0.3), subset.max().reindex(groups).clip(lower=0.3)
+        left.fill_between(groups, low, high, color=colors[kind], alpha=0.45, lw=0)
+        label = "simulated, no groups" if kind == "continuum" else f"simulated, {kind}"
+        left.text(groups[-1] + 0.08, float(np.sqrt(low.iloc[-1] * high.iloc[-1])), label, color=colors[kind], fontsize=8, va="center")
+    real = table[table["data"] == "real"].set_index("groups")["log_likelihood_gain"].reindex(groups)
+    left.plot(groups, real, "o-", color=RUST, ms=6, lw=1.5, zorder=3)
+    left.text(groups[-1] + 0.08, real.iloc[-1], "real data", color=RUST, fontsize=8, va="center")
+    # Each extra group adds three parameters (a share and a two-dimensional mean); BIC charges log(n) / 2 per parameter.
+    needed = [(g - 1) * 3 * np.log(n_children) / 2 for g in groups]
+    left.plot(groups, needed, ":", color=INK, lw=1)
+    left.text(groups[0], needed[0] * 0.8, "gain BIC requires", fontsize=7, va="top")
+    left.set_yscale("log")
+    left.set_xticks(groups)
+    left.set_xlim(groups[0] - 0.2, groups[-1] + 1.5)
+    left.set_xlabel("groups on the two axes (shared spread)")
+    left.set_ylabel("log-likelihood gain over one group")
+    left.set_title("What adding groups buys", fontsize=9, loc="left")
+    tidy(left)
+
+    slopes = fits["slopes_shared_k2"]
+    names = [f"{role} axis" for role in axis_roles(slopes, flags)]
+    for radius in (1, 2):
+        right.add_patch(Ellipse((0, 0), 2 * radius, 2 * radius, fill=False, ec=GRAY, lw=1, ls="--"))
+    for mean, covariance, share, color in zip(fits["means_shared_k2"], fits["covariances_shared_k2"], fits["shares_shared_k2"], [RUST, INK], strict=True):
+        values, vectors = np.linalg.eigh(covariance)
+        angle = np.degrees(np.arctan2(vectors[1, 1], vectors[0, 1]))
+        for radius in (1, 2):
+            right.add_patch(Ellipse(mean, 2 * radius * np.sqrt(values[1]), 2 * radius * np.sqrt(values[0]), angle=angle, fill=False, ec=color, lw=1.4))
+        right.plot(*mean, "o", color=color, ms=5)
+        right.annotate(f"{share:.0%}", mean, textcoords="offset points", xytext=(6, 6), color=color, fontsize=9)
+    right.set_xlim(-3.6, 3.6)
+    right.set_ylim(-3.6, 3.6)
+    right.set_aspect("equal")
+    right.set_xlabel(names[0])
+    right.set_ylabel(names[1])
+    right.set_title("The two-group model (dashed: one group)", fontsize=9, loc="left")
+    tidy(right)
+    fig.tight_layout()
+    fig.savefig(path, dpi=170)
+    plt.close(fig)
+
+
 def draw_agreement_by_confidence(kdir: Path, path: Path) -> None:
     """Each check's ARI as children with lower class probability are set aside, against the share of children kept."""
     series = []
@@ -873,6 +936,10 @@ def main() -> None:
     if (main_dir / "stability_calibration.csv").exists() and (main_dir / "stability_by_k.csv").exists():
         draw_stability_vs_simulation(main_dir / "stability_by_k.csv", main_dir / "stability_calibration.csv", out_dir / "stability_vs_simulation.png")
     draw_agreement_by_confidence(kdir, out_dir / "agreement_by_confidence.png")
+    if (main_dir / "factor_mixture_calibration.csv").exists():
+        draw_factor_mixture(
+            main_dir / "factor_mixture_calibration.csv", main_dir / "factor_mixture_fits.npz", flags, len(table), out_dir / "factor_mixture.png"
+        )
     draw_outcomes_by_class(table, fit.labels, order, label_of, colors, out_dir / "outcomes_by_class.png")
     draw_outcomes_by_period(table, fit.labels, order, label_of, colors, out_dir / "outcomes_by_period.png")
     draw_checks_dot_plot(kdir, k, out_dir / f"checks_k{k}.png")
@@ -894,6 +961,9 @@ def main() -> None:
         main_dir / "heldout_selection.csv",
         main_dir / "latent_density.csv",
         main_dir / "stability_calibration.csv",
+        main_dir / "factor_mixture.csv",
+        main_dir / "factor_mixture_heldout.csv",
+        main_dir / "factor_mixture_calibration.csv",
     ):
         if source.exists():
             shutil.copy(source, tables_dir / source.name)

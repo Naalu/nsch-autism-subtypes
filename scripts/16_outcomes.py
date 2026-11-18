@@ -1,4 +1,4 @@
-"""Step 16 of 16. What do the classes predict? Three held-out outcomes, and the pandemic years.
+"""Step 16 of 17. What do the classes predict? Three held-out outcomes, and the pandemic years.
 
 Why this step exists
 --------------------

@@ -178,6 +178,17 @@ The three held-out outcomes and the pandemic-years checks, at one K, written int
 | `outcome_heldout_2025.csv` | One row per `outcome` and `model`, fit on 2016 to 2024 and scored on the 2025 children: `n_test`, `test_log_loss`, `vs_count` (negative is better than count). |
 | `outcomes.json` | Per outcome: the planned test's verdicts and every model's BIC and log-loss, the 2025 scores, and the period test (likelihood-ratio statistic, `df`, `p_value`, `changed` at 0.05 / 3, the interaction terms). Under `without_pandemic_years`: the refit without 2020 and 2021 against the main classes (ARI with interval, class sizes, the largest condition-rate difference and where it is). |
 
+### Step 17, `scripts/17_factor_mixture.py` (main folder)
+
+| File | Contents |
+|---|---|
+| `factor_mixture.csv` | One row per model fit to the real data: `version` (`shared spread` or `separate spreads`), `groups`, `n_parameters`, `log_likelihood`, `bic`, `log_likelihood_gain` and `bic_vs_one_group` (against the one-group model, which is the two-dimensional latent trait model; negative BIC difference means groups help), `converged`, `at_bound`, `group_shares`, `group_means`, `smallest_group_sd` (0.25 is the floor) and `confidently_placed` (share of children with a group probability of 0.9 or more). |
+| `factor_mixture_heldout.csv` | For each split of step 13 and each model: `heldout_log_likelihood`, `gain_over_one_group` with its standard error `gain_se` from the per-child differences, and `train_bic_vs_one_group`. |
+| `factor_mixture_calibration.csv` | The shared-spread models with 2 to 4 groups on the real data and on each simulated dataset (`data`: `real`, `continuum`, `4 classes`; `replicate`): `log_likelihood_gain`, `bic_vs_one_group`, `confidently_placed`, `converged`. |
+| `factor_mixture_fits.npz` | For every real-data model, keyed by version and K (for example `means_shared_k2`): group `shares`, `means`, `covariances`, each child's group `probabilities`, and the `slopes`; with `year` and `hhid` to line the rows up with the analysis table. |
+| `factor_mixture.json` | The lowest-BIC model, the tables above, the simulated BIC ranges and the settings. |
+| `factor_mixture_work/` | Each dataset's fits as they finish, so an interrupted run resumes. Safe to delete. |
+
 ## Running it, and how long it takes
 
 On a recent laptop:
@@ -191,9 +202,10 @@ On a recent laptop:
 | one K's bootstrap (step 6, 200 resamples) | 20 to 40 minutes |
 | `make calibrate` (steps 14 and 15) | about an hour, plus 10 to 15 minutes for step 15 |
 | `make outcomes` (step 16) | 5 to 10 minutes |
-| `make sweep` (K = 4 to 8) | 4 to 5 hours, mostly the bootstraps |
+| `make mixture` (step 17; `JOBS=4` fits four datasets at once) | 1 to 2 hours with two at once |
+| `make sweep` (K = 4 to 8) | 5 to 7 hours, mostly the bootstraps and step 17 |
 
-The sweep keeps going when a step fails, logs everything to `results/sweep.log`, and writes a `STATUS` file into each K folder. Steps 13 and 14 and the figures run at the end. To rerun only those after a sweep, use `make choose calibrate figures`.
+The sweep keeps going when a step fails, logs everything to `results/sweep.log`, and writes a `STATUS` file into each K folder. Steps 13, 14 and 17 and the figures run at the end. To rerun only those after a sweep, use `make choose calibrate mixture figures`.
 
 The scripts, `make` and `scripts/sweep_k.sh` all default to our from-scratch code. Pass `--backend reference` to a script, or `BACKEND=reference` to `make` or the sweep, to run the library versions into `results_reference/`.
 

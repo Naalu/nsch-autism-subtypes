@@ -12,24 +12,26 @@ STARTS  ?= 20
 NBOOT   ?= 200
 KS      ?= 4 5 6 7 8
 K       ?= 4
+JOBS    ?= 2
 
-.PHONY: help all download fit sweep choose calibrate outcomes figures compare overview paper test smoke lint clean
+.PHONY: help all download fit sweep choose calibrate outcomes mixture figures compare overview paper test smoke lint clean
 
 help:
 	@echo "make test       unit tests on synthetic data (seconds)"
 	@echo "make smoke      run every pipeline step once at tiny settings (about 5 minutes)"
 	@echo "make fit        step 3: latent class models K=1..8 into results/"
-	@echo "make sweep      steps 4 to 15 at K in KS ($(KS)) and the figures (hours; mostly bootstrap)"
+	@echo "make sweep      steps 4 to 17 at K in KS ($(KS)) and the figures (hours; mostly bootstrap)"
 	@echo "make choose     step 13 only: apply the K rule to the bootstraps on file"
 	@echo "make calibrate  steps 14 and 15 only: shape, stability and replication checks on simulated data (about an hour; step 15 at K=$(K))"
 	@echo "make outcomes   step 16 only: the three held-out outcomes and the pandemic-years checks at K=$(K) (5 to 10 minutes)"
+	@echo "make mixture    step 17 only: factor mixture models on real and simulated data (1 to 2 hours; JOBS=$(JOBS) at a time)"
 	@echo "make figures    redraw the results figures from existing outputs"
 	@echo "make compare    our code against StepMix (saved fits), scikit-learn and SciPy (refit; about 5 minutes)"
 	@echo "make overview   the data-overview figures (needs data/interim from 'make download')"
 	@echo "make paper      build paper/main.pdf from the committed figures (needs LaTeX)"
 	@echo "make download   steps 1 and 2 from the Census files (about 60 MB; not needed for anything else)"
 	@echo "make all        fit + sweep"
-	@echo "Options: BACKEND=$(BACKEND) STARTS=$(STARTS) NBOOT=$(NBOOT) KS='$(KS)' K=$(K)"
+	@echo "Options: BACKEND=$(BACKEND) STARTS=$(STARTS) NBOOT=$(NBOOT) KS='$(KS)' K=$(K) JOBS=$(JOBS)"
 
 all: fit sweep
 
@@ -54,6 +56,9 @@ calibrate:
 
 outcomes:
 	$(PY) scripts/16_outcomes.py --backend $(BACKEND) --results $(FIT_RESULTS)_k$(K) --k $(K)
+
+mixture:
+	$(PY) scripts/17_factor_mixture.py --results $(FIT_RESULTS) --jobs $(JOBS)
 
 figures:
 	$(PY) scripts/make_results_figures.py --results $(FIT_RESULTS)
