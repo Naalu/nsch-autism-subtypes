@@ -24,7 +24,7 @@ export const CONDITION_SHORT: Record<string, string> = {
 	behavior: 'Behavior problems',
 	dev_delay: 'Developmental delay',
 	intellectual: 'Intellectual disability',
-	speech: 'Speech or language',
+	speech: 'Speech or language disorder',
 	learning: 'Learning disability',
 	tourette: 'Tourette syndrome',
 	asthma: 'Asthma',
@@ -34,8 +34,8 @@ export const CONDITION_SHORT: Record<string, string> = {
 	cerebral_palsy: 'Cerebral palsy',
 	blood: 'Blood disorder',
 	down_syndrome: 'Down syndrome',
-	deafness: 'Hearing',
-	blindness: 'Vision'
+	deafness: 'Hearing problems',
+	blindness: 'Vision problems'
 };
 
 /** The three families the conditions are shown in, in survey order. */
@@ -47,6 +47,11 @@ export const CONDITION_FAMILIES = [
 		flags: ['tourette', 'asthma', 'epilepsy', 'headache', 'heart', 'cerebral_palsy', 'blood', 'down_syndrome', 'deafness', 'blindness']
 	}
 ] as const;
+
+/** A condition's short name as it reads inside a sentence: lowercase unless it starts with a name or acronym. */
+export function inSentence(name: string): string {
+	return /^(ADHD|Down|Tourette)/.test(name) ? name : name.charAt(0).toLowerCase() + name.slice(1);
+}
 
 export function percent(p: number, digits = 0): string {
 	return `${(100 * p).toFixed(digits)}%`;

@@ -2,6 +2,9 @@
 	import '@fontsource/ibm-plex-sans/400.css';
 	import '@fontsource/ibm-plex-sans/600.css';
 	import '@fontsource/ibm-plex-sans/700.css';
+	import '@fontsource/ibm-plex-serif/400.css';
+	import '@fontsource/ibm-plex-serif/400-italic.css';
+	import '@fontsource/ibm-plex-serif/600.css';
 	import '../app.css';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
@@ -16,13 +19,16 @@
 </script>
 
 <header class="wide">
-	<a class="title" href={resolve('/')}>Autistic children's co-occurring diagnoses</a>
+	<a class="title" href={resolve('/')}>Co-occurring diagnoses in autistic children</a>
 	<nav aria-label="Pages">
 		{#each pages as p}
 			<a href={p.href} aria-current={page.route.id === p.route ? 'page' : undefined}>{p.label}</a>
 		{/each}
 	</nav>
-	<p class="notice">A class project, not peer reviewed. Nothing here describes or diagnoses an individual child.</p>
+	<p class="notice">
+		A class project, not peer reviewed. Each dot is one child's survey answers, with no year, age or place attached. Nothing here can
+		tell you which group, if any, a particular child is in.
+	</p>
 </header>
 
 <main>
@@ -32,7 +38,7 @@
 <footer class="wide">
 	<p>
 		A class project for CS 472/572 (Unsupervised Learning) at Northern Arizona University, by Chris Reger and Haley Berger. Not peer
-		reviewed. The figures describe survey answers about groups of children and say nothing about any individual child.
+		reviewed. The figures describe parents' survey answers; they cannot tell you which group, if any, a particular child is in.
 	</p>
 	<p>
 		Data: National Survey of Children's Health, 2016 to 2024, public-use files.

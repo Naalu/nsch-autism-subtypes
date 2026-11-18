@@ -54,6 +54,13 @@ export interface Model {
 
 export type Numbers = Record<string, { value: number; source: string }>;
 
+/** The parts of context.json the story uses. */
+export interface Context {
+	children_per_year: Record<string, number>;
+	/** The story's opening example: one set of answers, how many children share it, and the four-group fit. */
+	example: { answers: string; count: number; class_probabilities: number[] };
+}
+
 /** The files make site-data writes; SvelteKit checks each against static/data at compile time. */
 export type DataFile =
 	| 'children.json'

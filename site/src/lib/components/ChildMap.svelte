@@ -1,44 +1,51 @@
 <!--
-	Every child as a dot on the two axes, drawn on a canvas, colored by most likely group or
-	by one condition. Pointing at a dot (or, with the map focused, moving to it with the
-	arrow keys) shows a short description; clicking, tapping or Enter pins it so the full
-	list of conditions can be opened.
+	Every child as a dot on the two scales, drawn on a canvas, colored by best-fitting group
+	or by one diagnosis. Pointing at a dot shows a short description. A click or tap (or,
+	with the map focused, the arrow keys and Enter) pins it, so the full list of diagnoses
+	can be opened. Pins happen on click, not pointer-down, so a swipe that starts on the map
+	scrolls the page without pinning anything.
 -->
 <script lang="ts">
 	import { quadtree } from 'd3-quadtree';
 	import type { Children, Model, Profiles } from '#lib/data.ts';
-	import { abbreviate, describeProfile, mostLikely, sharedText, summarize } from '#lib/describe.ts';
-	import { CONDITION_SHORT, CONFIDENT, FAINT, GROUP_COLORS, INK, percent } from '#lib/groups.ts';
+	import { abbreviate, describeProfile, diagnosesText, mostLikely, sharedText, summarize } from '#lib/describe.ts';
+	import { CONDITION_SHORT, CONFIDENT, FAINT, GROUP_COLORS, INK, inSentence, percent } from '#lib/groups.ts';
 	import { linear } from '#lib/scale.ts';
 
 	interface Props {
 		children: Children;
 		profiles: Profiles;
 		model: Model;
-		/** "group", or the flag of one condition. */
+		/** "group", or the flag of one diagnosis. */
 		colorBy?: string;
 		label: string;
 	}
 	let { children, profiles, model, colorBy = 'group', label }: Props = $props();
 
+	const id = $props.id();
 	const LIMIT = 4;
 	const STEP = 0.2;
+	const MAX = 620;
 
 	let width = $state(0);
+	let plot: HTMLDivElement | undefined = $state();
 	let canvas: HTMLCanvasElement | undefined = $state();
 	let overlay: HTMLCanvasElement | undefined = $state();
 	let hovered: number | null = $state(null);
 	let pinned: number | null = $state(null);
 	let expanded = $state(false);
 	let cursor: [number, number] | null = $state(null);
+	/** What screen readers hear; set only by keyboard moves and pins, never by the mouse. */
+	let readout = $state('');
 
-	const size = $derived(Math.max(240, Math.min(width, 620)));
+	const size = $derived(Math.max(240, Math.min(width, MAX)));
 	const sx = $derived(linear([-LIMIT, LIMIT], [0, size]));
 	const sy = $derived(linear([-LIMIT, LIMIT], [size, 0]));
 	const radius = $derived(Math.max(1.3, size / 310));
-	/** On narrow screens the group labels move from the corners to a legend under the map. */
+	/** On narrow screens group labels sit in a legend and the description sits under the map. */
 	const compact = $derived(size < 440);
 	const conditionIndex = $derived(model.conditions.findIndex((c) => c.flag === colorBy));
+	const conditionName = $derived(conditionIndex < 0 ? '' : inSentence(CONDITION_SHORT[colorBy]));
 
 	/** Fill, opacity and drawing order for every child. Dots that matter are drawn last. */
 	const style = $derived.by(() => {
@@ -50,8 +57,8 @@
 			const p = children.profile[i];
 			if (conditionIndex < 0) {
 				const { group, probability } = mostLikely(p, profiles);
-				fill[i] = GROUP_COLORS[group];
 				const sure = probability >= CONFIDENT;
+				fill[i] = GROUP_COLORS[group];
 				alpha[i] = sure ? 0.8 : 0.28;
 				emphasis[i] = sure ? 1 : 0;
 			} else {
@@ -75,15 +82,10 @@
 	/** The dot being described: the pinned one, otherwise the one under the pointer. */
 	const shown = $derived(pinned ?? hovered);
 	const description = $derived(shown === null ? null : describeProfile(children.profile[shown], profiles, model));
-	const brief = $derived(description ? abbreviate(description.conditions) : null);
+	const more = $derived(description ? abbreviate(description.diagnoses).more : 0);
 
 	const corners = $derived(
-		model.classes.map((g, i) => ({
-			...g,
-			color: GROUP_COLORS[i],
-			right: g.center[0] > 0,
-			top: g.center[1] > 0
-		}))
+		model.classes.map((g, i) => ({ ...g, color: GROUP_COLORS[i], right: g.center[0] > 0, top: g.center[1] > 0 }))
 	);
 
 	function prepare(c: HTMLCanvasElement) {
@@ -99,14 +101,6 @@
 	$effect(() => {
 		if (!canvas || width === 0) return;
 		const ctx = prepare(canvas);
-		ctx.strokeStyle = '#d3d9e0';
-		ctx.lineWidth = 1;
-		ctx.beginPath();
-		ctx.moveTo(Math.round(sx(0)) + 0.5, 0);
-		ctx.lineTo(Math.round(sx(0)) + 0.5, size);
-		ctx.moveTo(0, Math.round(sy(0)) + 0.5);
-		ctx.lineTo(size, Math.round(sy(0)) + 0.5);
-		ctx.stroke();
 		const { fill, alpha, order } = style;
 		for (const i of order) {
 			ctx.globalAlpha = alpha[i];
@@ -144,18 +138,22 @@
 		ctx.stroke();
 	});
 
-	function nearest(event: PointerEvent): number | null {
+	function announce(index: number | null) {
+		readout = index === null ? '' : summarize(describeProfile(children.profile[index], profiles, model), children.n);
+	}
+
+	function nearest(event: MouseEvent): number | null {
 		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
 		return tree.find(event.clientX - rect.left, event.clientY - rect.top, 12) ?? null;
 	}
 
 	function move(event: PointerEvent) {
-		if (pinned !== null) return;
+		if (pinned !== null || event.pointerType === 'touch') return;
 		hovered = nearest(event);
 		cursor = null;
 	}
 
-	function press(event: PointerEvent) {
+	function click(event: MouseEvent) {
 		if ((event.target as HTMLElement).closest('.tip')) return;
 		pin(nearest(event));
 	}
@@ -164,120 +162,134 @@
 		pinned = index;
 		hovered = index;
 		expanded = false;
+		announce(index);
+	}
+
+	function unpin() {
+		pin(null);
+		cursor = null;
+		plot?.focus();
 	}
 
 	function key(event: KeyboardEvent) {
-		const moves: Record<string, [number, number]> = { ArrowLeft: [-STEP, 0], ArrowRight: [STEP, 0], ArrowUp: [0, STEP], ArrowDown: [0, -STEP] };
+		// Keys pressed on the description's buttons belong to the buttons, except Escape.
+		if (event.target !== event.currentTarget && event.key !== 'Escape') return;
 		if (event.key === 'Escape') {
-			pin(null);
-			cursor = null;
+			unpin();
 			return;
 		}
 		if (event.key === 'Enter') {
 			pin(pinned === null ? hovered : null);
 			return;
 		}
-		const move = moves[event.key];
-		if (!move) return;
+		const moves: Record<string, [number, number]> = { ArrowLeft: [-STEP, 0], ArrowRight: [STEP, 0], ArrowUp: [0, STEP], ArrowDown: [0, -STEP] };
+		const step = moves[event.key];
+		if (!step) return;
 		event.preventDefault();
 		const [cx, cy] = cursor ?? [0, 0];
-		cursor = [Math.max(-LIMIT, Math.min(LIMIT, cx + move[0])), Math.max(-LIMIT, Math.min(LIMIT, cy + move[1]))];
+		cursor = [Math.max(-LIMIT, Math.min(LIMIT, cx + step[0])), Math.max(-LIMIT, Math.min(LIMIT, cy + step[1]))];
 		pinned = null;
 		expanded = false;
 		hovered = tree.find(sx(cursor[0]), sy(cursor[1]), 24) ?? null;
+		announce(hovered);
 	}
 
 	const tipLeft = $derived(shown === null ? 0 : sx(children.x[shown]));
 	const tipTop = $derived(shown === null ? 0 : sy(children.y[shown]));
 </script>
 
+{#snippet details()}
+	{#if description}
+		<p class="tip-head">{diagnosesText(description.diagnoses, expanded)}</p>
+		<p class="tip-note">{sharedText(description.sharedBy, children.n)}</p>
+		<p class="tip-note">Four-group model's best fit for these answers:</p>
+		<ul>
+			{#each description.chances.filter((c) => c.probability >= 0.05) as c}
+				<li>
+					<span class="key" style:background={GROUP_COLORS[c.group]}></span>{c.name}
+					<span class="num">{percent(c.probability)}</span>
+				</li>
+			{/each}
+		</ul>
+		{#if pinned === null}
+			{#if more > 0}<p class="tip-hint">Click, tap or press Enter to see all diagnoses.</p>{/if}
+		{:else}
+			<div class="tip-actions">
+				{#if more > 0}
+					<button type="button" onclick={() => (expanded = !expanded)}>{expanded ? 'Show fewer' : 'Show all'}</button>
+				{/if}
+				<button type="button" onclick={unpin}>Close</button>
+			</div>
+		{/if}
+	{/if}
+{/snippet}
+
 <figure class="map">
-	<div class="frame">
-		<p class="y-label">More mental-health and behavioral diagnoses</p>
+	<div class="frame" class:compact>
+		{#if compact}
+			<p class="y-top">More mental-health and behavioral diagnoses, toward the top</p>
+		{:else}
+			<p class="y-label" style:height="{size}px"><span>Fewer</span><span>More mental-health and behavioral diagnoses</span></p>
+		{/if}
 		<div class="column" bind:clientWidth={width}>
-		<!-- The map is a canvas that answers the pointer and the arrow keys; no native element
-		     does that, so it is an "application" region with its own keyboard handling. -->
-		<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
-		<div
-			class="plot"
-			style:width="{size}px"
-			style:height="{size}px"
-			role="application"
-			aria-label="{label}. Use the arrow keys to move between children, Enter to pin one, Escape to clear."
-			aria-describedby="map-readout"
-			tabindex="0"
-			onpointermove={move}
-			onpointerdown={press}
-			onpointerleave={() => {
-				if (pinned === null) hovered = null;
-			}}
-			onkeydown={key}
-			onblur={(event) => {
-				if ((event.relatedTarget as HTMLElement | null)?.closest('.tip')) return;
-				cursor = null;
-				if (pinned === null) hovered = null;
-			}}
-		>
-			<canvas bind:this={canvas} style:width="{size}px" style:height="{size}px"></canvas>
-			<canvas class="overlay" bind:this={overlay} style:width="{size}px" style:height="{size}px"></canvas>
+			<!-- The map is a canvas that answers the pointer and the arrow keys; no native element
+			     does that, so it is an "application" region with its own keyboard handling. -->
+			<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
+			<div
+				class="plot"
+				bind:this={plot}
+				style:width="{size}px"
+				style:height="{size}px"
+				role="application"
+				aria-label="{label}. Use the arrow keys to move between children, Enter to pin one, Escape to clear."
+				aria-describedby="{id}-readout"
+				tabindex="0"
+				onpointermove={move}
+				onclick={click}
+				onpointerleave={() => {
+					if (pinned === null) hovered = null;
+				}}
+				onkeydown={key}
+				onblur={(event) => {
+					if ((event.relatedTarget as HTMLElement | null)?.closest('.tip')) return;
+					cursor = null;
+					if (pinned === null) hovered = null;
+				}}
+			>
+				<canvas bind:this={canvas} style:width="{size}px" style:height="{size}px"></canvas>
+				<canvas class="overlay" bind:this={overlay} style:width="{size}px" style:height="{size}px"></canvas>
 
-			{#if conditionIndex < 0 && !compact}
-				{#each corners as g}
-					<p class="corner" class:right={g.right} class:top={g.top}>
-						<span class="key" style:background={g.color}></span><span class="name">{g.short_name}</span>
-						<span class="share num">{percent(g.weighted_share)}</span>
-					</p>
-				{/each}
-			{/if}
-
-			{#if description && brief}
-				<div
-					class="tip"
-					class:pinned={pinned !== null}
-					class:flip={tipLeft > size * 0.55}
-					class:below={tipTop < size * 0.3}
-					style:left="{tipLeft}px"
-					style:top="{tipTop}px"
-				>
-					{#if description.conditions.length === 0}
-						<p class="tip-head">None of the 18 conditions</p>
-					{:else}
-						<p class="tip-head">
-							{description.conditions.length}
-							{description.conditions.length === 1 ? 'condition' : 'conditions'}:
-							{#if expanded || brief.more === 0}
-								{description.conditions.join(', ')}
-							{:else}
-								{brief.first.join(', ')}, and {brief.more} more
-							{/if}
+				{#if conditionIndex < 0 && !compact}
+					{#each corners as g}
+						<p class="corner" class:right={g.right} class:top={g.top}>
+							<span class="key" style:background={g.color}></span><span class="name">{g.short_name}</span>
+							<span class="share num">{percent(g.weighted_share)}</span>
 						</p>
-					{/if}
-					<p class="tip-note">{sharedText(description.sharedBy)}</p>
-					<ul>
-						{#each description.chances.filter((c) => c.probability >= 0.05) as c}
-							<li>
-								<span class="key" style:background={GROUP_COLORS[c.group]}></span>{c.name}
-								<span class="num">{percent(c.probability)}</span>
-							</li>
-						{/each}
-					</ul>
-					{#if pinned === null}
-						{#if brief.more > 0}<p class="tip-hint">Click the dot to see all of them.</p>{/if}
-					{:else}
-						<div class="tip-actions">
-							{#if brief.more > 0}
-								<button type="button" onclick={() => (expanded = !expanded)}>{expanded ? 'Show fewer' : 'Show all'}</button>
-							{/if}
-							<button type="button" onclick={() => pin(null)}>Close</button>
-						</div>
-					{/if}
-				</div>
+					{/each}
+				{/if}
+
+				{#if description && !compact}
+					<div
+						class="tip"
+						class:pinned={pinned !== null}
+						class:flip={tipLeft > size * 0.55}
+						class:below={tipTop < size * 0.3}
+						style:left="{tipLeft}px"
+						style:top="{tipTop}px"
+					>
+						{@render details()}
+					</div>
+				{/if}
+			</div>
+			<p class="x-label" style:width="{size}px">
+				<span>Fewer</span><span class="more">More developmental and language diagnoses</span>
+			</p>
+			{#if description && compact}
+				<div class="tip static" class:pinned={pinned !== null}>{@render details()}</div>
 			{/if}
-		</div>
-		<p class="x-label" style:width="{size}px"><span>Fewer</span><span class="more">More developmental and language diagnoses</span></p>
 		</div>
 	</div>
-	<p id="map-readout" class="visually-hidden" aria-live="polite">{description ? summarize(description) : ''}</p>
+	<p id="{id}-readout" class="visually-hidden" aria-live="polite">{readout}</p>
 	{#if conditionIndex < 0 && compact}
 		<ul class="legend">
 			{#each corners as g}
@@ -286,8 +298,8 @@
 		</ul>
 	{:else if conditionIndex >= 0}
 		<ul class="legend">
-			<li><span class="key" style:background={INK}></span>{CONDITION_SHORT[colorBy]}</li>
-			<li><span class="key" style:background={FAINT}></span>Not reported</li>
+			<li><span class="key" style:background={INK}></span>{conditionName.charAt(0).toUpperCase() + conditionName.slice(1)} reported</li>
+			<li><span class="key" style:background={FAINT}></span>No {conditionName} reported</li>
 		</ul>
 	{/if}
 </figure>
@@ -299,39 +311,54 @@
 	.frame {
 		display: grid;
 		grid-template-columns: auto 1fr;
+		align-items: start;
 		column-gap: 0.5rem;
 		max-width: calc(620px + 2rem);
 	}
-	.y-label {
-		writing-mode: vertical-rl;
-		transform: rotate(180deg);
-		text-align: right;
-		margin: 0;
-		font-size: var(--step--1);
-		color: var(--ink-2);
+	.frame.compact {
+		grid-template-columns: 1fr;
 	}
 	.column {
 		min-width: 0;
 	}
+	.y-top {
+		margin: 0 0 0.4rem;
+		font-size: var(--step--1);
+		color: var(--ink-2);
+	}
+	.y-label {
+		display: flex;
+		justify-content: space-between;
+		writing-mode: vertical-rl;
+		transform: rotate(180deg);
+		margin: 0;
+		font-size: var(--step--1);
+		color: var(--ink-2);
+	}
 	.x-label {
 		display: flex;
 		justify-content: space-between;
+		gap: 1rem;
 		margin: 0.4rem 0 0;
 		max-width: none;
 		font-size: var(--step--1);
 		color: var(--ink-2);
 	}
 	.x-label .more {
-		max-width: 65%;
 		text-align: right;
 	}
 	.plot {
 		position: relative;
+		box-sizing: content-box;
 		touch-action: pan-y;
 		background: #fff;
-		border: 1px solid var(--rule);
+		outline: 1px solid var(--rule);
 		border-radius: 4px;
 		cursor: crosshair;
+	}
+	.plot:focus-visible {
+		outline: 2px solid var(--ink);
+		outline-offset: 3px;
 	}
 	canvas {
 		position: absolute;
@@ -390,28 +417,6 @@
 		line-height: 1.4;
 		pointer-events: none;
 	}
-	.tip.pinned {
-		pointer-events: auto;
-		cursor: auto;
-	}
-	.tip-hint {
-		color: var(--ink-2);
-		margin: 0.4rem 0 0 !important;
-	}
-	.tip-actions {
-		display: flex;
-		gap: 0.5rem;
-		margin-top: 0.5rem;
-	}
-	.tip-actions button {
-		font: inherit;
-		color: var(--ink);
-		background: var(--bg);
-		border: 1px solid var(--rule);
-		border-radius: 4px;
-		padding: 0.15rem 0.6rem;
-		cursor: pointer;
-	}
 	.tip.flip {
 		transform: translate(calc(-100% - 14px), -50%);
 	}
@@ -421,6 +426,16 @@
 	.tip.flip.below {
 		transform: translate(calc(-100% - 14px), 0);
 	}
+	.tip.pinned {
+		pointer-events: auto;
+	}
+	.tip.static {
+		position: static;
+		width: auto;
+		transform: none;
+		margin-top: 0.75rem;
+		box-shadow: none;
+	}
 	.tip p {
 		margin: 0 0 0.35rem;
 	}
@@ -429,6 +444,10 @@
 	}
 	.tip-note {
 		color: var(--ink-2);
+	}
+	.tip-hint {
+		color: var(--ink-2);
+		margin: 0.4rem 0 0 !important;
 	}
 	.tip ul,
 	.legend {
@@ -443,6 +462,20 @@
 	.tip li .num {
 		margin-left: auto;
 		padding-left: 1rem;
+	}
+	.tip-actions {
+		display: flex;
+		gap: 0.5rem;
+		margin-top: 0.5rem;
+	}
+	.tip-actions button {
+		font: inherit;
+		color: var(--ink);
+		background: var(--bg);
+		border: 1px solid var(--rule);
+		border-radius: 4px;
+		padding: 0.15rem 0.6rem;
+		cursor: pointer;
 	}
 	.legend {
 		display: flex;

@@ -1,132 +1,126 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import ChildMap from '#lib/components/ChildMap.svelte';
+	import GroupRates from '#lib/components/GroupRates.svelte';
 	import ProbabilityBar from '#lib/components/ProbabilityBar.svelte';
 	import ProfileRow from '#lib/components/ProfileRow.svelte';
-	import { loadData, type Children, type Model, type Numbers, type Profiles } from '#lib/data.ts';
-	import { CONDITION_SHORT, CONFIDENT, percent } from '#lib/groups.ts';
+	import { loadData, type Children, type Profiles } from '#lib/data.ts';
+	import { percent } from '#lib/groups.ts';
 
-	// The opening example: a common combination the four-group model nearly splits in half.
-	const EXAMPLE = '110000000000000000';
+	let { data } = $props();
 
-	type SiteData = { children: Children; profiles: Profiles; model: Model; numbers: Numbers };
-	let data = $state<SiteData | null>(null);
+	const TITLE = "Do autistic children's other diagnoses sort them into types?";
+	const AGELINK = 'https://doi.org/10.1016/j.cpr.2021.102033';
+	const LITMAN = 'https://doi.org/10.1038/s41588-025-02224-z';
+
+	const n = $derived(data.numbers.children.value.toLocaleString('en-US'));
+	const example = $derived(data.context.example);
+	const [first, second] = $derived(
+		example.class_probabilities
+			.map((p, group) => ({ p, group, name: data.model.classes[group].short_name }))
+			.sort((a, b) => b.p - a.p)
+	);
+
+	let map = $state<{ children: Children; profiles: Profiles } | null>(null);
 	let failure = $state<string | null>(null);
 	let colorBy = $state('group');
 
+	const views = [
+		{ value: 'group', label: 'Group' },
+		{ value: 'adhd', label: 'ADHD' },
+		{ value: 'speech', label: 'Speech or language disorder' }
+	];
+
 	onMount(async () => {
 		try {
-			const [children, profiles, model, numbers] = await Promise.all([
-				loadData<Children>('children.json'),
-				loadData<Profiles>('profiles.json'),
-				loadData<Model>('model.json'),
-				loadData<Numbers>('numbers.json')
-			]);
-			data = { children, profiles, model, numbers };
+			const [children, profiles] = await Promise.all([loadData<Children>('children.json'), loadData<Profiles>('profiles.json')]);
+			map = { children, profiles };
 		} catch (error) {
 			failure = error instanceof Error ? error.message : String(error);
 		}
 	});
-
-	const example = $derived(data ? data.profiles.answers.indexOf(EXAMPLE) : -1);
-	/** Share of children whose most likely group has less than 80% probability. */
-	const uncertain = $derived.by(() => {
-		if (!data) return 0.37;
-		const { children, profiles } = data;
-		let count = 0;
-		for (const p of children.profile) if (Math.max(...profiles.class_probabilities[p]) < CONFIDENT) count++;
-		return count / children.n;
-	});
-	const n = $derived(data ? data.numbers.children.value.toLocaleString('en-US') : '8,891');
 </script>
 
 <svelte:head>
-	<title>Autistic children's co-occurring diagnoses: types or two scales?</title>
+	<title>{TITLE}</title>
 </svelte:head>
 
 <article>
 	<section class="opening wide">
-		<h1>Do autistic children's other diagnoses sort them into types?</h1>
-		<p class="lede">
-			Most autistic children have other diagnoses too: ADHD, anxiety, a learning disability, a speech disorder. Studies that sort
-			children by these diagnoses usually report three or four groups, and few check whether the groups come back in a new set of
-			children. We sorted {n} children from a national survey of parents. Four groups came out, and they came back every time we
-			looked again. Then we asked whether that proves the groups are real.
+		<h1>{TITLE}</h1>
+		<p class="lede prose">
+			Nearly all autistic children ({percent(data.numbers.share_with_any_condition.value)} in this survey) have other diagnoses too.
+			Studies that sort them by those diagnoses usually report <a href={LITMAN}>three or four subtypes</a>, and
+			<a href={AGELINK}>few check</a> that the subtypes hold up. We found four groups among {n} children, and they held up in later survey
+			years, in the 2025 survey and under resampling. Then we asked whether that proves they are real.
 		</p>
 	</section>
 
-	<section class="wide step" aria-labelledby="one-row">
+	<section class="wide step first" aria-labelledby="one-row">
 		<h2 id="one-row">One row of answers</h2>
-		<p>
-			The survey asks parents whether a doctor or other health care provider has ever told them their child has each of 18 conditions,
-			and if so, whether the child has it now. A condition counts here when the answer to both is yes. This exact row of answers is
-			shared by {data && example >= 0 ? data.profiles.count[example] : 147} children:
+		<p class="prose">
+			The National Survey of Children's Health asks parents which of 18 conditions a doctor or other provider has diagnosed in their
+			child. This exact row of answers is shared by {example.count} children:
 		</p>
-		{#if data && example >= 0}
-			<div class="example">
-				<ProfileRow answers={EXAMPLE} conditions={data.model.conditions} />
-			</div>
-			<p>
-				A model that sorts children into four groups cannot decide where these children belong. It gives them a
-				{percent(data.profiles.class_probabilities[example][2])} chance of the mental-health and behavior group and
-				{percent(data.profiles.class_probabilities[example][0])} of the group with fewer diagnoses.
-			</p>
-			<div class="bar">
-				<ProbabilityBar probabilities={data.profiles.class_probabilities[example]} groups={data.model.classes} />
-			</div>
-			<p>
-				If children came in types, most rows of answers would point clearly to one group. This one does not, and it is not unusual:
-				for {percent(uncertain)} of the {n} children, no group gets as much as 80%.
-			</p>
-		{/if}
+		<div class="example">
+			<ProfileRow answers={example.answers} conditions={data.model.conditions} />
+		</div>
+		<p class="prose">
+			A model that sorts children into four groups cannot decide which group fits these answers. Its best fit is
+			{first.name}, at {percent(first.p)}, with {second.name} close behind at {percent(second.p)}.
+		</p>
+		<div class="bar">
+			<ProbabilityBar probabilities={example.class_probabilities} groups={data.model.classes} />
+		</div>
 		<p class="aside">
-			These are diagnoses a parent reports. A child with fewer of them may have been diagnosed less often, which depends on things
-			like access to specialists as well as on the child.
+			For each condition the survey asks whether a provider has ever said the child has it and, for most, whether the child has it
+			now; a diagnosis counts here when both answers are yes. Five lifelong conditions (cerebral palsy, blood disorders, Down
+			syndrome, hearing problems and vision problems) have no "now" question, so the first answer counts. These are diagnoses a
+			parent reports: a child with fewer of them may have been diagnosed less often, which depends on things like access to
+			specialists as well as on the child.
 		</p>
 	</section>
 
 	<section class="wide step" aria-labelledby="four-groups">
-		<h2 id="four-groups">Four groups on two scales</h2>
-		<p>
-			Sorted all at once, the {n} children form four groups. The groups line up with two scales that a second model finds in the same
-			answers. One rises with developmental delay, learning disability, speech or language disorder and intellectual disability. The
-			other rises with anxiety, depression, ADHD and behavior problems. Each dot is one child, placed where their answers put them on
-			the two scales.
+		<h2 id="four-groups">Four groups</h2>
+		<p class="prose">
+			Asked for four groups, a model splits the {n} children into four. Each dot below is one child, placed by two scores built from
+			their answers. One score rises with developmental delay, learning disability, speech or language disorder and intellectual
+			disability; the other with anxiety, depression, ADHD and behavior problems.
 		</p>
 
 		{#if failure}
 			<p role="alert">The map could not load. {failure} Reloading the page usually fixes this.</p>
-		{:else if !data}
+		{:else if !map}
 			<p class="loading">Loading the {n} children.</p>
 		{:else}
-			<div class="controls">
-				<label for="color-by">Color the children by</label>
-				<select id="color-by" bind:value={colorBy}>
-					<option value="group">their most likely group</option>
-					<optgroup label="one condition">
-						{#each data.model.conditions as c}
-							<option value={c.flag}>{CONDITION_SHORT[c.flag]}</option>
-						{/each}
-					</optgroup>
-				</select>
+			<div class="controls" role="group" aria-labelledby="color-by">
+				<span id="color-by">Color the children by</span>
+				{#each views as view}
+					<button type="button" aria-pressed={colorBy === view.value} onclick={() => (colorBy = view.value)}>{view.label}</button>
+				{/each}
 			</div>
-			<ChildMap
-				children={data.children}
-				profiles={data.profiles}
-				model={data.model}
-				{colorBy}
-				label="Map of {n} autistic children on the two scales"
-			/>
+			<p class="hint">Color by ADHD and the dark dots climb; color by speech or language disorder and they run to the right.</p>
+			<ChildMap children={map.children} profiles={map.profiles} model={data.model} {colorBy} label="Map of {n} autistic children" />
 			<p class="caption">
-				Each child's position is an estimate drawn from their answers, so it is approximate.
+				Each child's position is an estimate drawn from their answers, so children with identical answers land near each other, not
+				on one spot.
 				{#if colorBy === 'group'}
-					Faded dots are children the model places in a group with less than 80% probability. The percentages are each group's
-					estimated share of US autistic children aged 6 to 17.
+					Faded dots are children whose best-fitting group has less than 80% probability. The percentages are each group's
+					estimated share of US children aged 6 to 17 whose parent reports a current autism diagnosis.
 				{/if}
 				This view assumes positions follow a bell curve, which pulls any data into one round cloud, so the absence of gaps here is not
-				evidence either way. Step 4 comes back to that.
+				evidence either way. We come back to that below.
 			</p>
 		{/if}
+
+		<div class="rates">
+			<p class="prose">
+				The names describe the diagnoses that are common in each group. Each column is one group; the bars show how many of its
+				children have each diagnosis.
+			</p>
+			<GroupRates model={data.model} />
+		</div>
 	</section>
 
 	<section class="wide step todo" aria-labelledby="todo">
@@ -140,10 +134,10 @@
 
 <style>
 	.opening {
-		padding-block: clamp(3rem, 8vw, 6rem) 2rem;
+		padding-block: clamp(2rem, 5vw, 3.5rem) 0;
 	}
 	.opening h1 {
-		max-width: 20ch;
+		max-width: 56rem;
 	}
 	.lede {
 		font-size: var(--step-1);
@@ -152,6 +146,9 @@
 	}
 	.step {
 		padding-block: 3rem 1rem;
+	}
+	.step.first {
+		padding-top: 1.5rem;
 	}
 	.example {
 		margin-block: 1.5rem;
@@ -164,7 +161,8 @@
 	}
 	.aside,
 	.caption,
-	.loading {
+	.loading,
+	.hint {
 		font-size: var(--step--1);
 		color: var(--ink-2);
 	}
@@ -174,18 +172,30 @@
 	.controls {
 		display: flex;
 		flex-wrap: wrap;
-		align-items: baseline;
+		align-items: center;
 		gap: 0.5rem;
-		margin-block: 1.5rem 1rem;
+		margin-block: 1.5rem 0.5rem;
 		font-size: var(--step--1);
 	}
-	select {
+	.controls button {
 		font: inherit;
 		color: var(--ink);
 		background: #fff;
 		border: 1px solid var(--rule);
-		border-radius: 4px;
-		padding: 0.3rem 0.5rem;
+		border-radius: 999px;
+		padding: 0.25rem 0.8rem;
+		cursor: pointer;
+	}
+	.controls button[aria-pressed='true'] {
+		background: var(--ink);
+		border-color: var(--ink);
+		color: #fff;
+	}
+	.hint {
+		margin-bottom: 1rem;
+	}
+	.rates {
+		margin-top: 3rem;
 	}
 	.todo {
 		color: var(--ink-2);

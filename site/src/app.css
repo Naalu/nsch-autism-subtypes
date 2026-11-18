@@ -1,6 +1,7 @@
 /*
- * One family (IBM Plex Sans: distinct I, l and 1, a plain zero, tabular figures), one
- * cool off-white, one ink, one gray. Color is reserved for the four groups. Light mode only.
+ * IBM Plex: the serif for the story's prose, the sans for headings, labels, figures and
+ * controls (distinct I, l and 1, a plain zero, tabular figures). One cool off-white, one
+ * ink, one gray; color is reserved for the four groups. Light mode only.
  */
 :root {
 	--bg: #f4f6f8;
@@ -14,6 +15,7 @@
 	--g3: #bf5a2a;
 
 	--font: 'IBM Plex Sans', system-ui, sans-serif;
+	--serif: 'IBM Plex Serif', Georgia, serif;
 	--step--1: 0.875rem;
 	--step-0: 1.0625rem;
 	--step-1: 1.25rem;
@@ -43,7 +45,12 @@ body {
 	font-family: var(--font);
 	font-size: var(--step-0);
 	line-height: 1.6;
-	font-feature-settings: 'tnum' 0;
+}
+
+/* Running text in the story is set in the serif; everything else stays in the sans. */
+.prose {
+	font-family: var(--serif);
+	line-height: 1.65;
 }
 
 h1,
