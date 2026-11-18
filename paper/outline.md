@@ -4,7 +4,7 @@ Working title: Co-occurring conditions in a national sample of autistic children
 
 Alternatives: Four profiles on two axes: what replicates when co-occurring conditions in a national sample of autistic children are clustered. Or: Checking autism subtypes against a national survey: what replicates and what does not
 
-The claim, in three beats. First, the four profiles clinic studies report are here too, as the combinations of high and low on a developmental-language axis and a psychiatric axis, and the partition reproduces across survey years, in 2025, within age bands and under resampling. Second, a four-way partition of a smooth two-dimensional continuum does the same: run on data simulated from the fitted continuous model, with no classes in it, the same checks score the same, while data with four real classes score far higher. The continuous model also fits better and predicts new years as well as eight classes. Third, severity tracks position on the axes, not class membership. The profiles are regions of a map and a useful summary; they are not four kinds of children. Medical and sensory conditions form a third direction that appears as a third axis or as a small unstable class.
+The claim, in three beats. First, the four profiles clinic studies report are here too, as the combinations of high and low on a developmental-language axis and a mental-health axis, and the partition reproduces across survey years, in 2025, within age bands and under resampling. Second, a four-way partition of a smooth two-dimensional continuum does the same: run on data simulated from the fitted continuous model, with no classes in it, the same checks score the same, while data with four real classes score far higher. The continuous model also fits better and predicts new years as well as eight classes. Third, severity tracks position on the axes, not class membership. The profiles are regions of a map and a useful summary; they are not four kinds of children. Medical and sensory conditions form a third direction that appears as a third axis or as a small unstable class.
 
 Order of the results: lead with the map and the two axes (section 4.5 material), then the four profiles as its reproducible quadrants (4.1), then the checks as a single pass/fail table with the simulated ranges beside them (4.2), then severity. The reader should meet the continuum before the classes.
 
@@ -79,7 +79,7 @@ Repository, `make all`, committed analysis table and codebook, locked dependenci
 
 ## Figures and tables
 
-Main text, in reading order. All in `reports/figures/results/` and `reports/tables/`; one color per class and per axis throughout (developmental-language blue, psychiatric purple, both rust, neither gray).
+Main text, in reading order. All in `reports/figures/results/` and `reports/tables/`; one color per class and per axis throughout (developmental-language blue, mental-health purple, both rust, neither gray). Classes are named for the pattern of diagnoses: fewer co-occurring diagnoses, mostly developmental and language diagnoses, mostly mental-health and behavioral diagnoses, both kinds of diagnoses.
 
 1. `figure1_map.png`: the children on the two named axes, the classes as its regions, uncertain children faded, the two cuts. The reveal; everything after refers back to it.
 2. `loadings.png`: which conditions define each axis, with bootstrap intervals.

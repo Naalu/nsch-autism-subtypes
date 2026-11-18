@@ -9,13 +9,16 @@ import pytest
 
 from nsch_subtypes.site_data import (
     IDENTIFYING_KEYS,
-    MIN_CELL,
+    MIN_PROFILE,
+    MIN_YEAR_CELL,
     assert_no_identifiers,
     axis_alignment,
+    binned_counts,
     children_columns,
+    coarsened,
+    color_slots,
     distinct_profiles,
     order_by_size,
-    outcome_surface,
     per_profile,
     profile_strings,
     ranges_by,
@@ -52,7 +55,7 @@ def test_rounded_gives_plain_json_values():
 
 
 def test_axis_alignment_orders_and_orients_the_axes():
-    # Dimension 0 is psychiatric and reversed; dimension 1 is developmental.
+    # Dimension 0 is mental-health and reversed; dimension 1 is developmental.
     slopes = np.zeros((8, 2))
     slopes[:4, 0] = -2.0
     slopes[4:, 1] = 3.0
@@ -68,7 +71,14 @@ def test_profiles_are_distinct_counted_and_largest_first():
     profiles, profile_of_child, counts = distinct_profiles(X)
     assert counts.tolist() == [3, 1, 1] and counts.sum() == len(X)
     assert np.array_equal(profiles[profile_of_child], X)
-    assert profile_strings(profiles)[0] == "10"
+    assert profile_strings(profiles, counts, min_count=1)[0] == "10"
+    assert profile_strings(profiles, counts, min_count=2) == ["10", None, None], "answers of rare profiles are withheld"
+
+
+def test_coarsened_rounds_rare_profiles_more():
+    values = np.array([[0.12345, 0.87655], [0.12345, 0.87655]])
+    out = coarsened(values, np.array([MIN_PROFILE, MIN_PROFILE - 1]))
+    assert out.tolist() == [[0.123, 0.877], [0.12, 0.88]]
 
 
 def test_per_profile_refuses_values_that_vary_within_a_profile():
@@ -82,28 +92,35 @@ def test_per_profile_refuses_values_that_vary_within_a_profile():
 def test_children_are_shuffled_but_stay_whole():
     n = 200
     positions = np.column_stack([np.arange(n), -np.arange(n)]).astype(float)
-    columns = children_columns(positions, positions + 0.5, np.arange(n) % 7, np.repeat([2016, 2017], n // 2), np.tile([8, 15], n // 2), seed=1)
+    columns = children_columns(positions, positions + 0.5, np.arange(n) % 7, seed=1)
     assert columns["x"] != sorted(columns["x"]), "row order is the survey order"
     assert sorted(columns["x"]) == list(range(n))
-    for x, y, sharp_x, profile, older in zip(columns["x"], columns["y"], columns["sharp_x"], columns["profile"], columns["older"], strict=True):
-        assert y == -x and sharp_x == x + 0.5 and profile == x % 7 and older == int(x % 2 == 1)
-    assert set(columns) == {"x", "y", "sharp_x", "sharp_y", "profile", "year", "older"}
+    for x, y, sharp_x, profile in zip(columns["x"], columns["y"], columns["sharp_x"], columns["profile"], strict=True):
+        assert y == -x and sharp_x == x + 0.5 and profile == x % 7
+    assert set(columns) == {"x", "y", "sharp_x", "sharp_y", "profile"}, "nothing about a child beyond position and profile"
 
 
 def test_order_by_size():
     assert order_by_size(np.array([2, 2, 2, 0, 1, 1]), 3).tolist() == [0, 0, 0, 2, 1, 1]
 
 
-def test_outcome_surface_leaves_out_small_cells_and_unanswered_children():
+def test_color_slots_keep_a_group_its_color_as_k_changes():
+    # Four groups; at K = 5 group 2 splits in two, at K = 3 groups 0 and 1 merge.
+    four = np.repeat([0, 1, 2, 3], 10)
+    five = np.repeat([3, 0, 1, 4, 2], [10, 10, 6, 4, 10])  # new numbering, group 2 split 6/4
+    three = np.repeat([2, 0, 1], [20, 10, 10])
+    slots = color_slots({3: three, 4: four, 5: five}, reference_k=4)
+    assert slots[4] == [0, 1, 2, 3]
+    assert slots[5] == [1, 2, 3, 0, 4], "the larger half of the split keeps slot 2; the smaller gets the new slot 4"
+    assert slots[3][:2] == [2, 3] and slots[3][2] in (0, 1), "the merged group takes the slot of one of its parts"
+
+
+def test_binned_counts_leave_out_small_cells():
     rng = np.random.default_rng(0)
-    positions = np.vstack([rng.uniform(0.01, 0.49, size=(50, 2)), rng.uniform(1.01, 1.49, size=(MIN_CELL - 1, 2))])
-    has = np.zeros(len(positions), dtype=bool)
-    has[:10] = True
-    answered = np.ones(len(positions), dtype=bool)
-    answered[40:50] = False
-    cells = outcome_surface(positions, has, answered)
-    assert len(cells) == 1, "the cell with fewer than the minimum is published"
-    assert cells[0] == {"x": 0.25, "y": 0.25, "n": 40, "share": 0.25}
+    positions = np.vstack([rng.uniform(0.01, 0.74, size=(30, 2)), rng.uniform(1.51, 2.24, size=(MIN_YEAR_CELL - 1, 2))])
+    labels = np.array([0] * 20 + [2] * 10 + [1] * (MIN_YEAR_CELL - 1))
+    cells = binned_counts(positions, labels, 3)
+    assert cells == [{"x": 0.375, "y": 0.375, "counts": [20, 0, 10]}], "the cell with fewer than the minimum is published"
 
 
 def test_share_with_interval_and_ranges():
@@ -118,7 +135,7 @@ def test_share_with_interval_and_ranges():
 # ---------------------------------------------------------------------------- #
 def test_no_committed_file_carries_an_identifier():
     files = sorted(SITE_DATA.glob("*.json"))
-    assert len(files) == 8
+    assert len(files) == 9
     for path in files:
         assert_no_identifiers(json.loads(path.read_text()))
 
@@ -128,30 +145,53 @@ def test_children_and_profiles_agree_with_the_analysis():
     summary = pd.read_csv(TABLES / "summary.csv", header=None, index_col=0)[1]
     n = int(summary["n_main_complete"])
     assert children["n"] == n
-    assert all(len(children[column]) == n for column in ("x", "y", "sharp_x", "sharp_y", "profile", "year", "older"))
+    assert set(children) == {"n", "x", "y", "sharp_x", "sharp_y", "profile"}, "no year, age band or anything else per child"
+    assert all(len(children[column]) == n for column in ("x", "y", "sharp_x", "sharp_y", "profile"))
     assert sum(profiles["count"]) == n
     assert np.array_equal(np.bincount(children["profile"]), profiles["count"]), "profile counts match the children"
     assert profiles["count"] == sorted(profiles["count"], reverse=True)
-    assert len(set(profiles["answers"])) == len(profiles["answers"]) and all(set(answers) <= {"0", "1"} for answers in profiles["answers"])
-    assert children["year"] != sorted(children["year"]), "children are in survey order"
-    assert set(children["year"]) == set(range(2016, 2025)) and set(children["older"]) == {0, 1}
+    published = [answers for answers in profiles["answers"] if answers is not None]
+    assert len(set(published)) == len(published) and all(set(answers) <= {"0", "1"} and len(answers) == 18 for answers in published)
+    assert all((answers is None) == (count < MIN_PROFILE) for answers, count in zip(profiles["answers"], profiles["count"], strict=True)), (
+        "answers are published exactly for profiles shared by enough children"
+    )
+    assert all(answers.count("1") == k for answers, k in zip(profiles["answers"], profiles["n_conditions"], strict=True) if answers is not None)
+    rare = np.array(profiles["count"]) < MIN_PROFILE
+    assert np.allclose(np.array(profiles["class_probabilities"])[rare], np.round(np.array(profiles["class_probabilities"])[rare], 2))
     assert max(map(abs, children["x"] + children["y"] + children["sharp_x"] + children["sharp_y"])) <= 4.5
 
 
 def test_group_labels_and_probabilities_are_consistent():
     children, profiles, model = load("children.json"), load("profiles.json"), load("model.json")
     probabilities = np.array(profiles["class_probabilities"])
-    assert probabilities.shape == (len(profiles["count"]), 4) and np.allclose(probabilities.sum(axis=1), 1.0, atol=0.002)
-    assert np.array_equal(probabilities.argmax(axis=1), profiles["label_by_k"]["4"]), "the K = 4 label is the most likely class"
+    rare = np.array(profiles["count"]) < MIN_PROFILE
+    assert probabilities.shape == (len(profiles["count"]), 4)
+    assert np.allclose(probabilities[~rare].sum(axis=1), 1.0, atol=0.002) and np.allclose(probabilities[rare].sum(axis=1), 1.0, atol=0.021)
+    label = np.array(profiles["label_by_k"]["4"])
+    assert np.array_equal(probabilities[~rare].argmax(axis=1), label[~rare]), "the K = 4 label is the most likely class"
+    assert np.all(probabilities[np.arange(len(label)), label] == probabilities.max(axis=1)), "rounding may tie, never reorder"
     for k in range(2, 9):
         assert set(profiles["label_by_k"][str(k)]) == set(range(k))
     of_child = np.array(children["profile"])
     for by_k in model["by_k"]:
         shares = np.bincount(np.array(profiles["label_by_k"][str(by_k["k"])])[of_child], minlength=by_k["k"]) / children["n"]
         assert np.allclose(shares, by_k["shares"], atol=1e-4)
-    assert [c["name"] for c in model["classes"]] == ["fewer co-occurring conditions", "developmental-language", "psychiatric", "developmental and psychiatric"]
+    names = pd.read_csv(TABLES / "class_names_k4.csv")
+    assert [c["name"] for c in model["classes"]] == [
+        "fewer co-occurring diagnoses",
+        "mostly developmental and language diagnoses",
+        "mostly mental-health and behavioral diagnoses",
+        "both kinds of diagnoses",
+    ]
+    assert {c["name"] for c in model["classes"]} == set(names["name"]), "the site and the paper's tables use the same names"
+    assert [c["short_name"] for c in model["classes"]] == names.set_index("name").loc[[c["name"] for c in model["classes"]], "short_name"].tolist()
     centers = np.array([c["center"] for c in model["classes"]])
-    assert centers[1, 0] > centers[0, 0] and centers[2, 1] > centers[0, 1], "developmental is across and psychiatric is up"
+    assert centers[1, 0] > centers[0, 0] and centers[2, 1] > centers[0, 1], "developmental is across and mental health is up"
+    for by_k in model["by_k"]:
+        assert len(set(by_k["color_slot"])) == by_k["k"]
+        if by_k["k"] <= 4:
+            assert set(by_k["color_slot"]) <= {0, 1, 2, 3}
+    assert next(by_k for by_k in model["by_k"] if by_k["k"] == 4)["color_slot"] == [0, 1, 2, 3]
     assert len(model["conditions"]) == 18 and np.array(model["trait"]["slopes"]).shape == (18, 2)
 
 
@@ -175,7 +215,7 @@ def test_outcomes_are_published_only_in_aggregate():
     outcomes = load("outcomes.json")["outcomes"]
     assert set(outcomes) == {"severity", "forgone_care", "er_visits"}
     for outcome in outcomes.values():
-        assert outcome["surface"] and all(cell["n"] >= MIN_CELL and 0 <= cell["share"] <= 1 for cell in outcome["surface"])
+        assert "surface" not in outcome
         assert len(outcome["by_class"]) == 4 and all(group["n"] > 500 for group in outcome["by_class"])
 
 
@@ -188,3 +228,19 @@ def test_clouds_and_evidence_have_what_the_figures_need():
     assert clouds["continuum"]["gain_over_bell_curve"] < clouds["real"]["gain_over_bell_curve"] < clouds["classes"]["gain_over_bell_curve"]
     assert {row["data"] for row in evidence["replication"]["simulated"]} == {"continuum", "4 classes"}
     assert len(evidence["replication"]["real"]) >= 4 and len(evidence["mixture"]["calibration"]) == 33
+
+
+def test_years_are_published_only_as_counts_over_cells():
+    years, children = load("years.json"), load("children.json")
+    assert [one["year"] for one in years["maps"]] == list(range(2016, 2025))
+    assert sum(one["n"] for one in years["maps"]) == children["n"]
+    for one in years["maps"]:
+        assert all(sum(cell["counts"]) >= MIN_YEAR_CELL and len(cell["counts"]) == 4 for cell in one["cells"])
+        assert sum(sum(cell["counts"]) for cell in one["cells"]) > 0.8 * one["n"], "most children fall in published cells"
+    assert {row["class"] for row in years["weighted_shares"]} == set(years["groups"])
+
+
+def test_numbers_keys_are_plain_identifiers():
+    keys = load("numbers.json")
+    assert all(key.isidentifier() and key == key.lower() for key in keys)
+    assert {f"weighted_share_{key}" for key in ("fewer", "developmental", "mental_health", "both")} <= set(keys)

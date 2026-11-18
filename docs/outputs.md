@@ -10,7 +10,7 @@ This is the reference for anyone running, checking or changing the pipeline. It 
 | `results/` | The **main folder**, written by our from-scratch code. Step 3's fits for K = 1 to 8, step 13's held-out likelihood and its choice of K. If steps 4 to 12 were run without `--k`, their outputs for that K land here too. | No |
 | `results_k{K}/` | Steps 4 to 12 and 15 at one K, run by `scripts/sweep_k.sh`. Each holds a copy of that K's step 3 fit, so the folder is self-contained. | No |
 | `results_reference/`, `results_reference_k{K}/` | The same, made with StepMix / SciPy / scikit-learn (`BACKEND=reference`), as the check on our code. | No |
-| `reports/figures/results/`, `reports/tables/` | The results figures and summary tables, drawn from `results/`. `paper/outline.md` lists which figure goes where. Every figure uses one color per class and per axis: developmental-language blue, psychiatric purple, both rust, neither gray. | Yes |
+| `reports/figures/results/`, `reports/tables/` | The results figures and summary tables, drawn from `results/`. `paper/outline.md` lists which figure goes where. Every figure uses one color per class and per axis: developmental-language blue, mental-health purple, both rust, neither gray. | Yes |
 | `reports/figures/results_reference/`, `reports/tables/results_reference/` | The same figures and tables from a reference run, if one is drawn. Kept separate so they never overwrite the main ones. | Yes |
 | `reports/figures/backend_comparison/` | Our code against StepMix: BIC overlay, matched profiles and rate differences. | Yes |
 | `reports/implementation-comparison.md` | The written comparison of our code with the library versions; the comparison script supplies its tables and figures but does not write it. | Yes |
@@ -191,17 +191,18 @@ The three held-out outcomes and the pandemic-years checks, at one K, written int
 
 ### The website's data, `scripts/build_site_data.py`
 
-Written to `site/static/data/` and committed, because the website is built from them. The script fits nothing new except the latent trait model on the two simulated datasets it shows beside the real one. Nothing in these files identifies a child: no household ID, state, stratum, weight, sex or exact age, and children are in a shuffled order (`src/nsch_subtypes/site_data.py` has the full list, and `tests/test_site_data.py` checks it).
+Written to `site/static/data/` and committed, because the website is built from them. The script fits nothing new except the latent trait model on the two simulated datasets it shows beside the real one. Nothing in these files identifies a child: no household ID, state, stratum, weight, sex, age or survey year per child, and children are in a shuffled order. A profile's answers are published only when at least 10 children share it; the page shows only the number of conditions and the group probabilities for the rest. `src/nsch_subtypes/site_data.py` has the full rules, and `tests/test_site_data.py` checks them against the committed files.
 
 | File | Contents |
 |---|---|
-| `children.json` | One entry per child, as columns: position on the developmental-language (`x`) and psychiatric (`y`) axes drawn under the model's bell curve, the same child drawn from the estimated distribution of positions (`sharp_x`, `sharp_y`), `profile` (row in `profiles.json`), `year`, and `older` (1 for ages 12 to 17). |
-| `profiles.json` | One entry per distinct condition profile, most common first: `answers` (18 characters, 0 or 1, in flag order), `count`, the four `class_probabilities`, the profile's class at each K (`label_by_k`), its k-means cluster at K = 4 (`kmeans_label`), and its probability of the larger group in the two-group factor mixture model. |
-| `model.json` | The conditions and their labels, the four classes (name, shares, rates, center on the map), the latent trait slopes and intercepts on the site's axes, shares and stability at each K, the k-means agreement, and the two factor mixture groups. |
+| `children.json` | One entry per child, as columns: position on the developmental-language (`x`) and mental-health (`y`) axes drawn under the model's bell curve, the same child drawn from the estimated distribution of positions (`sharp_x`, `sharp_y`), and `profile` (row in `profiles.json`). Nothing else. |
+| `profiles.json` | One entry per distinct condition profile, most common first: `answers` (18 characters, 0 or 1, in flag order; `null` for profiles shared by fewer than 10 children), `count`, `n_conditions`, the four `class_probabilities` (two decimals for rare profiles), the profile's group at each K (`label_by_k`), its k-means cluster at K = 4 (`kmeans_label`), and its probability of the larger group in the two-group factor mixture model. |
+| `model.json` | The conditions and their labels, the four groups (name, short name for legends, shares, rates, center on the map), the latent trait slopes and intercepts on the site's axes, and for each K the shares, centers, stability and `color_slot`: the color each group takes, matched to the neighboring K so that a group keeps its color as K changes. |
 | `clouds.json` | 2,500 children each from the real data, a simulated continuum and simulated four classes, drawn both ways, with each dataset's `gain_over_bell_curve` from step 14's shape check. |
-| `evidence.json` | The check tables: replication against simulation with ranges, stability by K, the shape check, the model comparison, the factor mixture tables and the loadings. |
-| `outcomes.json` | For severity, missed care and emergency visits: the share in each half-unit map cell holding at least 20 children, the rate by class with a 95% interval, and the outcome model table. |
-| `context.json` | The selection counts, children per year, the co-occurrence matrix, class shares by year, and the five example rows from the data overview reduced to survey answers and flags. |
+| `evidence.json` | The check tables, each simulated replicate as its own row: replication against simulation with ranges, stability by K, the shape check, the model comparison, the factor mixture tables and the loadings. |
+| `outcomes.json` | For severity, missed care and emergency visits: the overall rate, the rate by group with a 95% interval, and the outcome model table. |
+| `years.json` | For each survey year, the number of children of each group in each 0.75-unit map cell holding at least 5 children (89% to 98% of each year's children), and the weighted group shares with 95% intervals. |
+| `context.json` | The selection counts, children per year and the co-occurrence matrix. |
 | `numbers.json` | Every number the site's text quotes, with the table it came from. |
 
 ## Running it, and how long it takes

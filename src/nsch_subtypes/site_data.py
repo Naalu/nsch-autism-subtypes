@@ -1,7 +1,7 @@
 """Turning results into the small data files the project website draws from.
 
 The website shows every child as a dot on the two axes and lets a visitor
-recolor, filter and cut that cloud. This module holds the pieces that shape
+recolor and cut that cloud. This module holds the pieces that shape
 the pipeline's results into what the page needs; ``scripts/build_site_data.py``
 loads the results and calls them.
 
@@ -13,12 +13,24 @@ any one child as the figures need:
 - no household ID, state, sampling stratum, survey weight, sex or exact age;
 - children are written in a shuffled order, so a row cannot be matched back
   to the survey file by position;
-- a child's dot carries its position, its survey year, whether it is 12 or
-  older, and which condition profile it has. Everything else (group
+- a child's dot carries only its position and which condition profile it
+  has: no survey year and no age band. Everything else (group
   probabilities, cluster labels) is stored once per profile, because it
   depends only on the 18 answers;
-- outcomes (severity, missed care, emergency visits) are published only as
-  shares within map cells that hold at least ``MIN_CELL`` children.
+- a profile's answers are published only when at least ``MIN_PROFILE``
+  children share it. For rarer profiles the file holds the number of
+  conditions and the group probabilities to two decimals, which is what the
+  page shows when a visitor points at one of those dots;
+- survey years appear only as counts of children per map cell and group,
+  in cells that hold at least ``MIN_YEAR_CELL`` children, and as shares;
+- outcomes (severity, missed care, emergency visits) appear only as rates
+  by group.
+
+These rules decide what the page displays about a single dot. They are not
+a guarantee against re-identification: the survey's public-use files
+already contain every child's answers, and a determined reader could match a
+rare profile's group probabilities against the model. The point is that the
+site never shows one child's full record.
 
 ``assert_no_identifiers`` checks the first point on everything that is
 written, and the tests check the rest.
@@ -30,12 +42,16 @@ import itertools
 from collections.abc import Iterable
 
 import numpy as np
+from scipy.optimize import linear_sum_assignment
 
 # Keys that must never appear in a file written for the website.
 IDENTIFYING_KEYS = frozenset({"hhid", "state", "fipsst", "stratum", "weight", "fwc", "sex", "age"})
 
-# Fewest children a map cell may hold before its outcome share is published.
-MIN_CELL = 20
+# Fewest children who must share a condition profile before its answers are published.
+MIN_PROFILE = 10
+
+# Fewest children a map cell in one survey year may hold before its counts are published.
+MIN_YEAR_CELL = 5
 
 # The conditions that name the two axes, as in the results figures.
 DEVELOPMENTAL = ("dev_delay", "learning", "speech", "intellectual")
@@ -82,7 +98,7 @@ def axis_alignment(slopes: np.ndarray, flags: list[str]) -> np.ndarray:
     """The 2-by-2 matrix that turns a model's two dimensions into the site's axes.
 
     The site always draws the developmental-language axis across and the
-    psychiatric axis up, both pointing toward "more conditions". A fitted
+    mental-health axis up, both pointing toward "more conditions". A fitted
     model's dimensions come in either order and either sign, so this picks
     the order by which dimension the developmental marker conditions load on
     more, and flips a dimension whose marker slopes are negative. Multiply
@@ -118,9 +134,22 @@ def distinct_profiles(X: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray
     return profiles[order], new_index[profile_of_child], counts[order]
 
 
-def profile_strings(profiles: np.ndarray) -> list[str]:
-    """Each profile as a string of 0s and 1s in flag order, for example ``"110000010000000000"``."""
-    return ["".join(str(int(value)) for value in row) for row in profiles]
+def profile_strings(profiles: np.ndarray, counts: np.ndarray, min_count: int = MIN_PROFILE) -> list[str | None]:
+    """Each profile as a string of 0s and 1s in flag order, for example ``"110000010000000000"``.
+
+    A profile shared by fewer than ``min_count`` children comes back as
+    ``None``, so its answers are not published.
+    """
+    return ["".join(str(int(value)) for value in row) if count >= min_count else None for row, count in zip(profiles, counts, strict=True)]
+
+
+def coarsened(values: np.ndarray, counts: np.ndarray, min_count: int = MIN_PROFILE, digits: int = 3, rare_digits: int = 2) -> np.ndarray:
+    """Per-profile values rounded to ``digits``, and to ``rare_digits`` for profiles shared by fewer than ``min_count`` children."""
+    values = np.asarray(values, dtype=float)
+    rare = np.asarray(counts) < min_count
+    out = np.round(values, digits)
+    out[rare] = np.round(values[rare], rare_digits)
+    return out
 
 
 def per_profile(values: np.ndarray, profile_of_child: np.ndarray, n_profiles: int) -> np.ndarray:
@@ -141,17 +170,14 @@ def per_profile(values: np.ndarray, profile_of_child: np.ndarray, n_profiles: in
     return collapsed
 
 
-def children_columns(
-    positions: np.ndarray, sharp_positions: np.ndarray, profile_of_child: np.ndarray, years: np.ndarray, ages: np.ndarray, seed: int = 0
-) -> dict:
+def children_columns(positions: np.ndarray, sharp_positions: np.ndarray, profile_of_child: np.ndarray, seed: int = 0) -> dict:
     """The per-child file: columns of equal length, in a shuffled order.
 
     ``x`` and ``y`` are the position on the site's axes to two decimals,
     drawn assuming positions follow a bell curve; ``sharp_x`` and ``sharp_y``
     are the same child's position drawn from the distribution estimated from
     the data instead (see ``build_site_data.py``). ``profile`` is the child's
-    row in the profiles file, ``year`` the survey year and ``older`` 1 for
-    ages 12 to 17 and 0 for 6 to 11.
+    row in the profiles file. Nothing else about the child is written.
     """
     order = np.random.default_rng(seed).permutation(len(profile_of_child))
     return {
@@ -160,8 +186,6 @@ def children_columns(
         "sharp_x": np.round(sharp_positions[order, 0], 2).tolist(),
         "sharp_y": np.round(sharp_positions[order, 1], 2).tolist(),
         "profile": profile_of_child[order].astype(int).tolist(),
-        "year": np.asarray(years)[order].astype(int).tolist(),
-        "older": (np.asarray(ages)[order] >= 12).astype(int).tolist(),
     }
 
 
@@ -174,22 +198,61 @@ def order_by_size(labels: np.ndarray, n_classes: int) -> np.ndarray:
     return new_label[labels]
 
 
+def _match_slots(labels: np.ndarray, n_classes: int, reference: np.ndarray, reference_slots: list[int]) -> list[int]:
+    """Give each of ``n_classes`` clusters the slot of the reference cluster it overlaps most, one to one.
+
+    With more clusters than reference clusters, the unmatched ones get new
+    slots after the largest slot in use, in order of size.
+    """
+    n_reference = len(reference_slots)
+    overlap = np.zeros((n_classes, n_reference))
+    np.add.at(overlap, (labels, reference), 1)
+    rows, columns = linear_sum_assignment(-overlap)
+    slots = [-1] * n_classes
+    for row, column in zip(rows, columns, strict=True):
+        slots[row] = reference_slots[column]
+    next_slot = max(reference_slots) + 1
+    sizes = np.bincount(labels, minlength=n_classes)
+    for c in sorted(range(n_classes), key=lambda c: -sizes[c]):
+        if slots[c] < 0:
+            slots[c] = next_slot
+            next_slot += 1
+    return slots
+
+
+def color_slots(labels_by_k: dict[int, np.ndarray], reference_k: int) -> dict[int, list[int]]:
+    """For each K, the color slot of each cluster, so a group keeps its color as K changes.
+
+    At ``reference_k`` cluster ``c`` has slot ``c``. Moving one step up or
+    down in K, each cluster takes the slot of the cluster at the neighboring
+    K that it shares the most children with (one to one), and a cluster with
+    no partner, which happens only going up, takes the next unused slot. So
+    when the four groups split into five, four of the five keep their colors
+    and the new one gets a fifth.
+    """
+    slots = {reference_k: list(range(reference_k))}
+    ks = sorted(labels_by_k)
+    for k in [k for k in ks if k > reference_k]:
+        slots[k] = _match_slots(labels_by_k[k], k, labels_by_k[k - 1], slots[k - 1])
+    for k in [k for k in ks if k < reference_k][::-1]:
+        slots[k] = _match_slots(labels_by_k[k], k, labels_by_k[k + 1], slots[k + 1])
+    return {k: slots[k] for k in ks}
+
+
 # ---------------------------------------------------------------------------- #
 # Aggregates
 # ---------------------------------------------------------------------------- #
-def outcome_surface(
-    positions: np.ndarray, has_outcome: np.ndarray, answered: np.ndarray, cell: float = 0.5, limit: float = 4.0, min_cell: int = MIN_CELL
+def binned_counts(
+    positions: np.ndarray, labels: np.ndarray, n_classes: int, cell: float = 0.75, limit: float = 3.75, min_cell: int = MIN_YEAR_CELL
 ) -> list[dict]:
-    """The share of children with an outcome in each square cell of the map.
+    """How many children of each group fall in each square cell of the map.
 
-    Cells are ``cell`` wide and cover ``-limit`` to ``limit`` on both axes.
-    Only children who answered the question count, and a cell with fewer
-    than ``min_cell`` of them is left out, so no small group's outcome is
-    published. Each returned cell has its center (``x``, ``y``), the number
-    of children (``n``) and the ``share`` with the outcome.
+    Cells are ``cell`` wide and cover ``-limit`` to ``limit`` on both axes;
+    children outside are left out. A cell with fewer than ``min_cell``
+    children is left out too. Each returned cell has its center (``x``,
+    ``y``) and ``counts``, one per group.
     """
-    positions = np.asarray(positions)[answered]
-    has_outcome = np.asarray(has_outcome)[answered].astype(float)
+    positions = np.asarray(positions)
     edges = np.arange(-limit, limit + cell / 2, cell)
     column = np.digitize(positions[:, 0], edges) - 1
     row = np.digitize(positions[:, 1], edges) - 1
@@ -199,7 +262,7 @@ def outcome_surface(
         members = inside & (column == c) & (row == r)
         if members.sum() >= min_cell:
             cells.append(
-                {"x": float(edges[c] + cell / 2), "y": float(edges[r] + cell / 2), "n": int(members.sum()), "share": float(has_outcome[members].mean())}
+                {"x": float(edges[c] + cell / 2), "y": float(edges[r] + cell / 2), "counts": np.bincount(labels[members], minlength=n_classes).tolist()}
             )
     return cells
 
