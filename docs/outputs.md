@@ -189,6 +189,21 @@ The three held-out outcomes and the pandemic-years checks, at one K, written int
 | `factor_mixture.json` | The lowest-BIC model, the tables above, the simulated BIC ranges and the settings. |
 | `factor_mixture_work/` | Each dataset's fits as they finish, so an interrupted run resumes. Safe to delete. |
 
+### The website's data, `scripts/build_site_data.py`
+
+Written to `site/static/data/` and committed, because the website is built from them. The script fits nothing new except the latent trait model on the two simulated datasets it shows beside the real one. Nothing in these files identifies a child: no household ID, state, stratum, weight, sex or exact age, and children are in a shuffled order (`src/nsch_subtypes/site_data.py` has the full list, and `tests/test_site_data.py` checks it).
+
+| File | Contents |
+|---|---|
+| `children.json` | One entry per child, as columns: position on the developmental-language (`x`) and psychiatric (`y`) axes drawn under the model's bell curve, the same child drawn from the estimated distribution of positions (`sharp_x`, `sharp_y`), `profile` (row in `profiles.json`), `year`, and `older` (1 for ages 12 to 17). |
+| `profiles.json` | One entry per distinct condition profile, most common first: `answers` (18 characters, 0 or 1, in flag order), `count`, the four `class_probabilities`, the profile's class at each K (`label_by_k`), its k-means cluster at K = 4 (`kmeans_label`), and its probability of the larger group in the two-group factor mixture model. |
+| `model.json` | The conditions and their labels, the four classes (name, shares, rates, center on the map), the latent trait slopes and intercepts on the site's axes, shares and stability at each K, the k-means agreement, and the two factor mixture groups. |
+| `clouds.json` | 2,500 children each from the real data, a simulated continuum and simulated four classes, drawn both ways, with each dataset's `gain_over_bell_curve` from step 14's shape check. |
+| `evidence.json` | The check tables: replication against simulation with ranges, stability by K, the shape check, the model comparison, the factor mixture tables and the loadings. |
+| `outcomes.json` | For severity, missed care and emergency visits: the share in each half-unit map cell holding at least 20 children, the rate by class with a 95% interval, and the outcome model table. |
+| `context.json` | The selection counts, children per year, the co-occurrence matrix, class shares by year, and the five example rows from the data overview reduced to survey answers and flags. |
+| `numbers.json` | Every number the site's text quotes, with the table it came from. |
+
 ## Running it, and how long it takes
 
 On a recent laptop:
@@ -202,6 +217,7 @@ On a recent laptop:
 | one K's bootstrap (step 6, 200 resamples) | 20 to 40 minutes |
 | `make calibrate` (steps 14 and 15) | about an hour, plus 10 to 15 minutes for step 15 |
 | `make outcomes` (step 16) | 5 to 10 minutes |
+| `make site-data` | about a minute |
 | `make mixture` (step 17; `JOBS=4` fits four datasets at once) | 1 to 2 hours with two at once |
 | `make sweep` (K = 4 to 8) | 5 to 7 hours, mostly the bootstraps and step 17 |
 

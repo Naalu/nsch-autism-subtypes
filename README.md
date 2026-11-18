@@ -42,6 +42,7 @@ src/nsch_subtypes/            the package
   partition.py                k-means, from scratch
   latent_trait.py             the continuous alternative: a binary factor model with 1 to 4 dimensions, from scratch
   factor_mixture.py           groups and axes in one model: a mixture of bell curves on the latent trait axes, from scratch
+  site_data.py                shapes results into the website's data files, without identifiers
   reference.py, backends.py   StepMix, SciPy and scikit-learn versions, and the switch between theirs and ours
   validate.py                 agreement, replication, stability, and the count-vs-class test
   describe.py                 survey-weighted national shares with confidence intervals
@@ -104,7 +105,7 @@ The survey can also be read through the [nsch](https://github.com/NAU-ASD3/nsch-
 | 16 Outcomes | `16_outcomes.py` | Step 7's test on three held-out outcomes (severity, forgone care, ER visits), scored on 2025 too; whether the class links changed in the pandemic years; the classes refit without 2020 and 2021 | Weighted rates by class |
 | 17 Mixture | `17_factor_mixture.py` | Factor mixture models: 1 to 4 groups placed on the two axes, with shared or separate spreads; held-out years; the same models on simulated data with no groups and with nothing but groups | |
 
-`make sweep` (or `scripts/sweep_k.sh 4 5`) runs steps 4 to 12, 15 and 16 at each K into `results_k{K}/`, then steps 13, 14 and 17 and `scripts/make_results_figures.py`. Step 17 alone is `make mixture`.
+`make sweep` (or `scripts/sweep_k.sh 4 5`) runs steps 4 to 12, 15 and 16 at each K into `results_k{K}/`, then steps 13, 14 and 17 and `scripts/make_results_figures.py`. Step 17 alone is `make mixture`. `make site-data` writes the website's data files from the results.
 
 Steps 1 to 3 are a complete project on their own. Steps 4, 5, 8, 9 and 10 are independent checks of the classes from step 3; step 6 is the stability check that also decides K; 11 and 12 ask whether the modeling choices and the class description itself hold up; 13 asks how much structure carries over to new children; 14 and 15 measure what the checks score when the answer is known; 16 asks what the classes predict. Step 7 turns the result into national numbers. Survey weights are used only to describe the classes (steps 7 and 8, and the weighted-fit check in 11), never to fit the main model.
 
