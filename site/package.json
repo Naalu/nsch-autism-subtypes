@@ -1,0 +1,35 @@
+{
+  "name": "nsch-autism-subtypes-site",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The project website: the analysis as an interactive story, built as a static SvelteKit site from the committed data files.",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
+    "@playwright/test": "1.63.0",
+    "@sveltejs/adapter-static": "3.0.10",
+    "@sveltejs/kit": "2.70.3",
+    "@sveltejs/vite-plugin-svelte": "5.1.1",
+    "@types/d3-quadtree": "3.0.6",
+    "svelte": "5.57.3",
+    "svelte-check": "4.3.4",
+    "typescript": "5.9.3",
+    "vite": "6.4.5",
+    "vitest": "3.2.4"
+  },
+  "dependencies": {
+    "@fontsource/atkinson-hyperlegible-next": "5.2.6",
+    "d3-quadtree": "3.0.1"
+  },
+  "overrides": {
+    "playwright-core": "1.63.0"
+  }
+}

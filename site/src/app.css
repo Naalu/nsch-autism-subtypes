@@ -1,0 +1,117 @@
+/*
+ * One family (Atkinson Hyperlegible Next, designed for low-vision readers), one cool
+ * off-white, one ink, one gray. Color is reserved for the four groups. Light mode only.
+ */
+:root {
+	--bg: #f4f6f8;
+	--ink: #1c2230;
+	--ink-2: #4c5566;
+	--rule: #d3d9e0;
+	--faint: #c3c9d2;
+	--g0: #969ba8;
+	--g1: #0b78a8;
+	--g2: #6b46c1;
+	--g3: #bf5a2a;
+
+	--font: 'Atkinson Hyperlegible Next', system-ui, sans-serif;
+	--step--1: 0.875rem;
+	--step-0: 1.0625rem;
+	--step-1: 1.25rem;
+	--step-2: 1.625rem;
+	--step-3: clamp(2.1rem, 1.4rem + 3vw, 3.25rem);
+
+	--measure: 38rem;
+	--wide: 66rem;
+	--gutter: clamp(1rem, 4vw, 2.5rem);
+	color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--ink);
+	font-family: var(--font);
+	font-size: var(--step-0);
+	line-height: 1.6;
+	font-feature-settings: 'tnum' 0;
+}
+
+h1,
+h2,
+h3 {
+	line-height: 1.15;
+	letter-spacing: -0.01em;
+	margin: 0 0 0.5em;
+	text-wrap: balance;
+}
+h1 {
+	font-size: var(--step-3);
+	font-weight: 700;
+}
+h2 {
+	font-size: var(--step-2);
+	font-weight: 700;
+}
+h3 {
+	font-size: var(--step-1);
+	font-weight: 600;
+}
+
+p {
+	margin: 0 0 1em;
+	max-width: var(--measure);
+	text-wrap: pretty;
+}
+
+a {
+	color: inherit;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 0.18em;
+}
+a:hover {
+	text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+	outline: 2px solid var(--ink);
+	outline-offset: 3px;
+	border-radius: 2px;
+}
+
+.wide {
+	max-width: var(--wide);
+	margin-inline: auto;
+	padding-inline: var(--gutter);
+}
+
+.num {
+	font-variant-numeric: tabular-nums;
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		transition-duration: 0.01ms !important;
+		animation-duration: 0.01ms !important;
+	}
+}
