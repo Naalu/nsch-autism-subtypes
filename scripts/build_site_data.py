@@ -11,8 +11,7 @@ one draw of each child's position).
 
 What is published about a child, and what is not, is set out at the top of
 ``src/nsch_subtypes/site_data.py``. In short: position and condition
-profile, with the answers of profiles shared by fewer than 10 children
-withheld; no identifiers, no weights, no survey year or age; years only as
+profile; no identifiers, no weights, no survey year or age; years only as
 counts over map cells, and outcomes only as rates by group.
 
 Run it after the pipeline, on the machine that holds the result folders::
@@ -22,7 +21,7 @@ Run it after the pipeline, on the machine that holds the result folders::
 Files, under ``--out`` (default ``site/static/data``)::
 
     children.json   one entry per child: position (drawn two ways) and profile (shuffled)
-    profiles.json   one entry per distinct condition profile: answers (withheld when rare),
+    profiles.json   one entry per distinct condition profile: answers,
                     count, number of conditions, group probabilities, and its group under
                     each K, under k-means and under the two-group factor mixture model
     model.json      what the page needs to place a set of answers: conditions, the four
@@ -57,14 +56,12 @@ from nsch_subtypes.lca import simulate_classes
 from nsch_subtypes.partition import cluster_kmeans
 from nsch_subtypes.site_data import (
     DEVELOPMENTAL,
-    MIN_PROFILE,
     MIN_YEAR_CELL,
     PSYCHIATRIC,
     assert_no_identifiers,
     axis_alignment,
     binned_counts,
     children_columns,
-    coarsened,
     color_slots,
     distinct_profiles,
     order_by_size,
@@ -244,14 +241,13 @@ def main() -> None:
         args.out,
         "profiles.json",
         {
-            "min_count_for_answers": MIN_PROFILE,
-            "answers": profile_strings(profiles, counts),
+            "answers": profile_strings(profiles),
             "count": counts,
             "n_conditions": profiles.sum(axis=1),
-            "class_probabilities": coarsened(per_profile(class_probabilities, profile_of_child, n_profiles), counts),
+            "class_probabilities": np.round(per_profile(class_probabilities, profile_of_child, n_profiles), 3),
             "label_by_k": {str(k): per_profile(labels, profile_of_child, n_profiles) for k, labels in labels_by_k.items()},
             "kmeans_label": per_profile(kmeans_labels, profile_of_child, n_profiles),
-            "mixture_probability": coarsened(per_profile(mixture["probabilities_shared_k2"][:, 0], profile_of_child, n_profiles), counts),
+            "mixture_probability": np.round(per_profile(mixture["probabilities_shared_k2"][:, 0], profile_of_child, n_profiles), 3),
         },
         digits=3,
     )

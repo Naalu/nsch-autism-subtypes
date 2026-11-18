@@ -17,20 +17,18 @@ any one child as the figures need:
   has: no survey year and no age band. Everything else (group
   probabilities, cluster labels) is stored once per profile, because it
   depends only on the 18 answers;
-- a profile's answers are published only when at least ``MIN_PROFILE``
-  children share it. For rarer profiles the file holds the number of
-  conditions and the group probabilities to two decimals, which is what the
-  page shows when a visitor points at one of those dots;
+- every distinct set of 18 answers is published once, with how many
+  children share it. With no year, age, state or survey order attached, a
+  set of answers shared by one child points to no particular survey record
+  beyond what the public-use files already hold;
 - survey years appear only as counts of children per map cell and group,
   in cells that hold at least ``MIN_YEAR_CELL`` children, and as shares;
 - outcomes (severity, missed care, emergency visits) appear only as rates
   by group.
 
-These rules decide what the page displays about a single dot. They are not
-a guarantee against re-identification: the survey's public-use files
-already contain every child's answers, and a determined reader could match a
-rare profile's group probabilities against the model. The point is that the
-site never shows one child's full record.
+The survey's public-use files already contain every child's answers; the
+point of these rules is that the site adds nothing that ties a set of
+answers to a survey year, an age or a place.
 
 ``assert_no_identifiers`` checks the first point on everything that is
 written, and the tests check the rest.
@@ -46,9 +44,6 @@ from scipy.optimize import linear_sum_assignment
 
 # Keys that must never appear in a file written for the website.
 IDENTIFYING_KEYS = frozenset({"hhid", "state", "fipsst", "stratum", "weight", "fwc", "sex", "age"})
-
-# Fewest children who must share a condition profile before its answers are published.
-MIN_PROFILE = 10
 
 # Fewest children a map cell in one survey year may hold before its counts are published.
 MIN_YEAR_CELL = 5
@@ -134,22 +129,9 @@ def distinct_profiles(X: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray
     return profiles[order], new_index[profile_of_child], counts[order]
 
 
-def profile_strings(profiles: np.ndarray, counts: np.ndarray, min_count: int = MIN_PROFILE) -> list[str | None]:
-    """Each profile as a string of 0s and 1s in flag order, for example ``"110000010000000000"``.
-
-    A profile shared by fewer than ``min_count`` children comes back as
-    ``None``, so its answers are not published.
-    """
-    return ["".join(str(int(value)) for value in row) if count >= min_count else None for row, count in zip(profiles, counts, strict=True)]
-
-
-def coarsened(values: np.ndarray, counts: np.ndarray, min_count: int = MIN_PROFILE, digits: int = 3, rare_digits: int = 2) -> np.ndarray:
-    """Per-profile values rounded to ``digits``, and to ``rare_digits`` for profiles shared by fewer than ``min_count`` children."""
-    values = np.asarray(values, dtype=float)
-    rare = np.asarray(counts) < min_count
-    out = np.round(values, digits)
-    out[rare] = np.round(values[rare], rare_digits)
-    return out
+def profile_strings(profiles: np.ndarray) -> list[str]:
+    """Each profile as a string of 0s and 1s in flag order, for example ``"110000010000000000"``."""
+    return ["".join(str(int(value)) for value in row) for row in profiles]
 
 
 def per_profile(values: np.ndarray, profile_of_child: np.ndarray, n_profiles: int) -> np.ndarray:
