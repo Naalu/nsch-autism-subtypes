@@ -14,7 +14,7 @@ KS      ?= 4 5 6 7 8
 K       ?= 4
 JOBS    ?= 2
 
-.PHONY: help all download fit sweep choose calibrate outcomes mixture figures compare overview paper test smoke lint clean
+.PHONY: help all download fit sweep choose calibrate outcomes mixture figures site-data compare overview paper test smoke lint clean
 
 help:
 	@echo "make test       unit tests on synthetic data (seconds)"
@@ -25,6 +25,7 @@ help:
 	@echo "make calibrate  steps 14 and 15 only: shape, stability and replication checks on simulated data (about an hour; step 15 at K=$(K))"
 	@echo "make outcomes   step 16 only: the three held-out outcomes and the pandemic-years checks at K=$(K) (5 to 10 minutes)"
 	@echo "make mixture    step 17 only: factor mixture models on real and simulated data (1 to 2 hours; JOBS=$(JOBS) at a time)"
+	@echo "make site-data  write the website's data files to site/static/data from the results (about a minute)"
 	@echo "make figures    redraw the results figures from existing outputs"
 	@echo "make compare    our code against StepMix (saved fits), scikit-learn and SciPy (refit; about 5 minutes)"
 	@echo "make overview   the data-overview figures (needs data/interim from 'make download')"
@@ -59,6 +60,9 @@ outcomes:
 
 mixture:
 	$(PY) scripts/17_factor_mixture.py --results $(FIT_RESULTS) --jobs $(JOBS)
+
+site-data:
+	$(PY) scripts/build_site_data.py --results $(FIT_RESULTS)
 
 figures:
 	$(PY) scripts/make_results_figures.py --results $(FIT_RESULTS)
