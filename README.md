@@ -16,7 +16,7 @@ We also fit a model with no groups, in which children vary along a few continuou
 
 The short answer: the conditions vary along two continuous axes. Four broad profiles, the combinations of high and low on a developmental-language axis and a psychiatric axis, come back in later years, in 2025 and under resampling, but only as well as the same cut of a smooth continuum would. The continuous model fits better and predicts new years as well as eight classes. Parent-rated severity rises along the developmental axis and does not jump at the class borders.
 
-![Every child on the two axes, colored by most likely class; the classes are the quadrants of one cloud](reports/figures/results/figure1_map.png)
+![Every child on the two axes, colored by most likely class, with the two cuts that best reproduce the classes](reports/figures/results/figure1_map.png)
 
 Course project for CS 472/572 (Unsupervised Learning) at Northern Arizona University, fall 2026. Chris Reger and Haley Berger.
 
@@ -128,7 +128,7 @@ Details in `docs/validation-checklist.md` and the paper; figures in `reports/fig
 - Parent-rated severity follows the developmental-language axis and not the psychiatric one. Classes add to a plain condition count, but two continuous scores predict severity better than the classes do.
 - A two-dimensional latent trait model fits better than any number of classes and predicts new survey years as well as eight classes with a third of the parameters. A third dimension picks up medical and sensory conditions, the same signal as a small fifth class that does not hold together under resampling. Finer class solutions fail replication.
 - A factor mixture model, which keeps the two axes and lets children bunch around a few places on them, finds little beyond the axes. A second group lowers BIC by 7 and predicts held-out years slightly better (by 8 log-likelihood units, standard error 4, on 2022 to 2024, and by 3, standard error 2, on 2025); a third and fourth group do not help, and neither does letting groups differ in spread. The same step on data simulated with no groups gains 0.4 to 4 log-likelihood units, and on data simulated with four classes 244 to 264; the real gain is 17 (`reports/figures/results/factor_mixture.png`). The two groups overlap heavily: 72% of children, and 28% who sit lower on the psychiatric axis. So the departure from a single smooth cloud is real but small, and it is one soft division along one axis.
-- Estimated from the data, the distribution of children on the two scales is lumpier than a bell curve but about half as lumpy as four separate groups would make it: some concentration at typical combinations on top of continuous variation. The map of children in that space (`reports/figures/results/map.png`) shows one cloud with the classes as regions of it.
+- Estimated from the data, the distribution of children on the two scales is lumpier than a bell curve but about half as lumpy as four separate groups would make it: some concentration at typical combinations on top of continuous variation. The map of children in that space (`reports/figures/results/map.png`) shows where the classes sit on the two scales. It illustrates the result without testing it: positions are drawn assuming a bell curve, and under that assumption data simulated from four separate classes also draw as one cloud.
 
 ## Methods and sources
 

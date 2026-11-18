@@ -4,7 +4,7 @@
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.62\textwidth]{figure1_map.png}
-\caption{The 8,891 children placed on the two axes of the latent trait model (one draw from each child's posterior). Color is the most likely of the four latent classes; children whose largest class probability is below 0.8 are faded. Dashed lines are the two cuts on the axes that best reproduce the classes (ARI 0.80). The corner labels give each class's weighted share of US autistic children aged 6 to 17. The children form one cloud, and the classes are its quadrants.}
+\caption{The 8,891 children placed on the two axes of the latent trait model (one draw from each child's posterior). Color is the most likely of the four latent classes; children whose largest class probability is below 0.8 are faded. Dashed lines are the two cuts on the axes that best reproduce the classes (ARI 0.80). The corner labels give each class's weighted share of US autistic children aged 6 to 17. The classes occupy the four quadrants. Positions are drawn assuming a normal latent distribution, which pulls any data toward one round cloud, so the absence of visible gaps here is not evidence against separate groups; Section~\ref{sec:classes-or-dimensions} tests that.}
 \label{fig:map}
 \end{figure*}
 
@@ -12,7 +12,7 @@
 \label{sec:axes}
 Figure~\ref{fig:map} shows the result the rest of the section builds toward. The two-dimensional latent trait model separates the 18 conditions into two sets (Figure~\ref{fig:loadings}). A developmental-language axis carries developmental delay (slope 3.97), intellectual disability (3.14), learning disability (2.51), Down syndrome (2.19) and speech or language disorder (2.03), with cerebral palsy and epilepsy more weakly. A psychiatric axis carries depression (3.63), anxiety (2.51), headaches (1.13), ADHD (0.89) and Tourette syndrome (0.87). Behavior problems load on both (0.68 and 0.73). Bootstrap standard errors for the slopes are 0.03 to 0.28, and the same two axes appear when the model is fit separately to ages 6 to 11 and 12 to 17 (congruence 0.98 or higher). The psychiatric position rises with age (correlation 0.26), which matches when anxiety and depression are usually diagnosed, and the developmental position falls slightly ($-0.11$).
 
-The four latent classes of Section~\ref{sec:profiles} are the four combinations of high and low on these axes. Two cuts on the axes, placed at the class means, reproduce the class assignments at ARI 0.80. The children do not form four separate clumps: they form one cloud, and the children whose class is uncertain lie along the cuts.
+The four latent classes of Section~\ref{sec:profiles} are the four combinations of high and low on these axes. Two cuts on the axes, placed at the class means, reproduce the class assignments at ARI 0.80. The children whose class is uncertain lie along the cuts. Figure~\ref{fig:map} shows no gaps between the classes, but it cannot show any: positions drawn under the model's normal assumption form one cloud even for data simulated from four separate classes. Whether the children form separate groups is tested below, by estimating the shape of the distribution on the axes and comparing with simulated data.
 
 \begin{figure}[t]
 \centering
