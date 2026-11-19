@@ -11,8 +11,7 @@ one draw of each child's position).
 
 What is published about a child, and what is not, is set out at the top of
 ``src/nsch_subtypes/site_data.py``. In short: position and condition
-profile, with the answers of profiles shared by fewer than 10 children
-withheld; no identifiers, no weights, no survey year or age; years only as
+profile; no identifiers, no weights, no survey year or age; years only as
 counts over map cells, and outcomes only as rates by group.
 
 Run it after the pipeline, on the machine that holds the result folders::
@@ -22,7 +21,7 @@ Run it after the pipeline, on the machine that holds the result folders::
 Files, under ``--out`` (default ``site/static/data``)::
 
     children.json   one entry per child: position (drawn two ways) and profile (shuffled)
-    profiles.json   one entry per distinct condition profile: answers (withheld when rare),
+    profiles.json   one entry per distinct condition profile: answers,
                     count, number of conditions, group probabilities, and its group under
                     each K, under k-means and under the two-group factor mixture model
     model.json      what the page needs to place a set of answers: conditions, the four
@@ -37,7 +36,8 @@ Files, under ``--out`` (default ``site/static/data``)::
                     the group label adds to the axes
     years.json      each survey year: children per group in each map cell, and the
                     weighted group shares with intervals
-    context.json    the funnel, children per year, co-occurrence
+    context.json    the funnel, children per year, co-occurrence, and the story's opening
+                    example: the set of answers with ADHD and anxiety only
     numbers.json    every number quoted in the site's text, with the table it came from
 """
 
@@ -57,14 +57,12 @@ from nsch_subtypes.lca import simulate_classes
 from nsch_subtypes.partition import cluster_kmeans
 from nsch_subtypes.site_data import (
     DEVELOPMENTAL,
-    MIN_PROFILE,
     MIN_YEAR_CELL,
     PSYCHIATRIC,
     assert_no_identifiers,
     axis_alignment,
     binned_counts,
     children_columns,
-    coarsened,
     color_slots,
     distinct_profiles,
     order_by_size,
@@ -88,6 +86,9 @@ CLASS_ORDER = {
 }
 SHORT_NAMES = ["fewer diagnoses", "developmental and language", "mental health and behavior", "both"]
 KEYS = ["fewer", "developmental", "mental_health", "both"]
+
+# The story opens on this set of answers: common, and split almost evenly between two groups.
+STORY_EXAMPLE = ("adhd", "anxiety")
 OUTCOMES = {
     "severity": ("severity", lambda column: column == "severe", "autism rated severe by the parent"),
     "forgone_care": ("forgone_care", lambda column: column == "yes", "needed health care in the past year and did not get it"),
@@ -244,14 +245,13 @@ def main() -> None:
         args.out,
         "profiles.json",
         {
-            "min_count_for_answers": MIN_PROFILE,
-            "answers": profile_strings(profiles, counts),
+            "answers": profile_strings(profiles),
             "count": counts,
             "n_conditions": profiles.sum(axis=1),
-            "class_probabilities": coarsened(per_profile(class_probabilities, profile_of_child, n_profiles), counts),
+            "class_probabilities": np.round(per_profile(class_probabilities, profile_of_child, n_profiles), 3),
             "label_by_k": {str(k): per_profile(labels, profile_of_child, n_profiles) for k, labels in labels_by_k.items()},
             "kmeans_label": per_profile(kmeans_labels, profile_of_child, n_profiles),
-            "mixture_probability": coarsened(per_profile(mixture["probabilities_shared_k2"][:, 0], profile_of_child, n_profiles), counts),
+            "mixture_probability": np.round(per_profile(mixture["probabilities_shared_k2"][:, 0], profile_of_child, n_profiles), 3),
         },
         digits=3,
     )
@@ -371,6 +371,8 @@ def main() -> None:
 
     # ---- context -----------------------------------------------------------------------------------------
     summary = pd.read_csv(tables / "summary.csv", header=None, index_col=0)[1]
+    example_answers = "".join("1" if flag in STORY_EXAMPLE else "0" for flag in flags)
+    example = profile_strings(profiles).index(example_answers)
     write(
         args.out,
         "context.json",
@@ -381,6 +383,11 @@ def main() -> None:
             "cooccurrence": {
                 "conditions": pd.read_csv(tables / "cooccurrence.csv", index_col=0).columns.tolist(),
                 "matrix": pd.read_csv(tables / "cooccurrence.csv", index_col=0).to_numpy(),
+            },
+            "example": {
+                "answers": example_answers,
+                "count": int(counts[example]),
+                "class_probabilities": np.round(class_probabilities[profile_of_child == example][0], 3),
             },
         },
     )
@@ -399,6 +406,7 @@ def main() -> None:
         "distinct_profiles": (len(profiles), "analysis table"),
         "share_with_any_condition": (float((X.sum(axis=1) > 0).mean()), "analysis table"),
         "mean_conditions": (float(X.sum(axis=1).mean()), "analysis table"),
+        "share_best_fit_below_80": (float((class_probabilities.max(axis=1) < 0.8).mean()), "four-class fit"),
         "ari_kmeans": (float(checks["second method (k-means)"]), "checks_by_k.csv"),
         "ari_heldout_years": (float(checks["held-out years"]), "checks_by_k.csv"),
         "ari_2025": (float(checks["2025 forward test"]), "checks_by_k.csv"),

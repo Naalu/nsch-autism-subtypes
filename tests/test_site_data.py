@@ -9,13 +9,11 @@ import pytest
 
 from nsch_subtypes.site_data import (
     IDENTIFYING_KEYS,
-    MIN_PROFILE,
     MIN_YEAR_CELL,
     assert_no_identifiers,
     axis_alignment,
     binned_counts,
     children_columns,
-    coarsened,
     color_slots,
     distinct_profiles,
     order_by_size,
@@ -71,14 +69,7 @@ def test_profiles_are_distinct_counted_and_largest_first():
     profiles, profile_of_child, counts = distinct_profiles(X)
     assert counts.tolist() == [3, 1, 1] and counts.sum() == len(X)
     assert np.array_equal(profiles[profile_of_child], X)
-    assert profile_strings(profiles, counts, min_count=1)[0] == "10"
-    assert profile_strings(profiles, counts, min_count=2) == ["10", None, None], "answers of rare profiles are withheld"
-
-
-def test_coarsened_rounds_rare_profiles_more():
-    values = np.array([[0.12345, 0.87655], [0.12345, 0.87655]])
-    out = coarsened(values, np.array([MIN_PROFILE, MIN_PROFILE - 1]))
-    assert out.tolist() == [[0.123, 0.877], [0.12, 0.88]]
+    assert profile_strings(profiles) == ["10", "00", "11"]
 
 
 def test_per_profile_refuses_values_that_vary_within_a_profile():
@@ -150,26 +141,17 @@ def test_children_and_profiles_agree_with_the_analysis():
     assert sum(profiles["count"]) == n
     assert np.array_equal(np.bincount(children["profile"]), profiles["count"]), "profile counts match the children"
     assert profiles["count"] == sorted(profiles["count"], reverse=True)
-    published = [answers for answers in profiles["answers"] if answers is not None]
-    assert len(set(published)) == len(published) and all(set(answers) <= {"0", "1"} and len(answers) == 18 for answers in published)
-    assert all((answers is None) == (count < MIN_PROFILE) for answers, count in zip(profiles["answers"], profiles["count"], strict=True)), (
-        "answers are published exactly for profiles shared by enough children"
-    )
-    assert all(answers.count("1") == k for answers, k in zip(profiles["answers"], profiles["n_conditions"], strict=True) if answers is not None)
-    rare = np.array(profiles["count"]) < MIN_PROFILE
-    assert np.allclose(np.array(profiles["class_probabilities"])[rare], np.round(np.array(profiles["class_probabilities"])[rare], 2))
+    answers = profiles["answers"]
+    assert len(set(answers)) == len(answers) and all(set(a) <= {"0", "1"} and len(a) == 18 for a in answers)
+    assert all(a.count("1") == k for a, k in zip(answers, profiles["n_conditions"], strict=True))
     assert max(map(abs, children["x"] + children["y"] + children["sharp_x"] + children["sharp_y"])) <= 4.5
 
 
 def test_group_labels_and_probabilities_are_consistent():
     children, profiles, model = load("children.json"), load("profiles.json"), load("model.json")
     probabilities = np.array(profiles["class_probabilities"])
-    rare = np.array(profiles["count"]) < MIN_PROFILE
-    assert probabilities.shape == (len(profiles["count"]), 4)
-    assert np.allclose(probabilities[~rare].sum(axis=1), 1.0, atol=0.002) and np.allclose(probabilities[rare].sum(axis=1), 1.0, atol=0.021)
-    label = np.array(profiles["label_by_k"]["4"])
-    assert np.array_equal(probabilities[~rare].argmax(axis=1), label[~rare]), "the K = 4 label is the most likely class"
-    assert np.all(probabilities[np.arange(len(label)), label] == probabilities.max(axis=1)), "rounding may tie, never reorder"
+    assert probabilities.shape == (len(profiles["count"]), 4) and np.allclose(probabilities.sum(axis=1), 1.0, atol=0.002)
+    assert np.array_equal(probabilities.argmax(axis=1), profiles["label_by_k"]["4"]), "the K = 4 label is the most likely class"
     for k in range(2, 9):
         assert set(profiles["label_by_k"][str(k)]) == set(range(k))
     of_child = np.array(children["profile"])
@@ -244,3 +226,10 @@ def test_numbers_keys_are_plain_identifiers():
     keys = load("numbers.json")
     assert all(key.isidentifier() and key == key.lower() for key in keys)
     assert {f"weighted_share_{key}" for key in ("fewer", "developmental", "mental_health", "both")} <= set(keys)
+
+
+def test_story_example_matches_the_profiles_file():
+    example, profiles = load("context.json")["example"], load("profiles.json")
+    i = profiles["answers"].index(example["answers"])
+    assert example["count"] == profiles["count"][i] and example["class_probabilities"] == profiles["class_probabilities"][i]
+    assert example["answers"].count("1") == 2
