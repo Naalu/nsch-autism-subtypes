@@ -54,6 +54,41 @@ export interface Model {
 
 export type Numbers = Record<string, { value: number; source: string }>;
 
+/** years.json: each survey year's children per group in each map cell, and weighted group shares. */
+export interface Years {
+	cell: number;
+	min_cell: number;
+	/** Full group names, in site order; `counts` follow this order. */
+	groups: string[];
+	maps: { year: number; n: number; cells: { x: number; y: number; counts: number[] }[] }[];
+	weighted_shares: { year: number; n: number; class: string; share: number; ci_low: number; ci_high: number }[];
+}
+
+/** One replication check on one dataset: agreement (ARI) between two fits. */
+export interface CheckResult {
+	data: 'real' | 'continuum' | '4 classes';
+	replicate: number;
+	check: string;
+	ari: number;
+}
+
+/** The parts of evidence.json the story uses. */
+export interface Evidence {
+	replication: { real: CheckResult[]; simulated: CheckResult[] };
+	shape: { data: 'real' | 'continuum' | 'classes'; replicate: number; improvement: number }[];
+	checks_by_k: Record<string, number>[];
+}
+
+/** clouds.json: 2,500 children from each of three datasets, drawn two ways. */
+export interface Cloud {
+	x: number[];
+	y: number[];
+	sharp_x: number[];
+	sharp_y: number[];
+	gain_over_bell_curve: number;
+}
+export type Clouds = Record<'real' | 'continuum' | 'classes', Cloud>;
+
 /** The parts of context.json the story uses. */
 export interface Context {
 	children_per_year: Record<string, number>;

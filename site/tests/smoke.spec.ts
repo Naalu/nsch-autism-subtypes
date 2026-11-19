@@ -65,7 +65,7 @@ test('a pinned description expands, and the keyboard reaches its buttons', async
 test('the arrow keys move between children and speak only then', async ({ page, isMobile }) => {
 	desktopOnly(isMobile);
 	const { map, box } = await openMap(page);
-	const readout = page.locator('[aria-live="polite"]');
+	const readout = page.locator('figure.map [aria-live="polite"]');
 	await page.mouse.move(box.x + box.width * 0.45, box.y + box.height * 0.55);
 	await expect(readout).toBeEmpty();
 	await map.focus();
@@ -82,6 +82,36 @@ test('on a phone, a tap pins a dot below the map and nothing scrolls sideways', 
 	await expect(page.locator('.tip.static')).toBeVisible();
 	const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 	expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test('the year figure steps through the survey years', async ({ page }) => {
+	await page.goto('./');
+	const figure = page.locator('section[aria-labelledby="hold-up"]');
+	await expect(figure.locator('output')).toHaveText('2016');
+	await figure.getByRole('button', { name: '2020' }).click();
+	await expect(figure.locator('output')).toHaveText('2020');
+	await figure.getByRole('button', { name: 'Play' }).click();
+	await expect(figure.locator('output')).toHaveText('2021', { timeout: 3000 });
+});
+
+test('guessing which cloud has groups reveals all three, side by side', async ({ page }) => {
+	await page.goto('./');
+	const section = page.locator('section[aria-labelledby="three-clouds"]');
+	await expect(section.getByText('The real survey', { exact: true })).toHaveCount(0);
+	await section.getByRole('button', { name: 'B', exact: true }).click();
+	await expect(section.getByRole('status')).toContainText('C was the one made up from four separate groups');
+	await expect(section.getByText('The real survey', { exact: true })).toHaveCount(2);
+	await expect(section.getByText('exaggerates lumps')).toBeVisible();
+});
+
+test('the replication checks are in the HTML with the real values', async ({ browser }) => {
+	const context = await browser.newContext({ javaScriptEnabled: false });
+	const page = await context.newPage();
+	await page.goto('./');
+	const section = page.locator('section[aria-labelledby="turn"]');
+	await expect(section.getByRole('img')).toHaveCount(5);
+	await expect(section).toContainText('The real children score below the made-up four groups on every check');
+	await context.close();
 });
 
 test('every page is reachable under the subpath', async ({ page }) => {

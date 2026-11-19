@@ -1,10 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import ChildMap from '#lib/components/ChildMap.svelte';
+	import CloudGuess from '#lib/components/CloudGuess.svelte';
+	import ReplicationStrip from '#lib/components/ReplicationStrip.svelte';
+	import YearMaps from '#lib/components/YearMaps.svelte';
 	import GroupRates from '#lib/components/GroupRates.svelte';
 	import ProbabilityBar from '#lib/components/ProbabilityBar.svelte';
 	import ProfileRow from '#lib/components/ProfileRow.svelte';
-	import { loadData, type Children, type Profiles } from '#lib/data.ts';
+	import { loadData, type Children, type Clouds, type Profiles } from '#lib/data.ts';
+	import { againstRange, checkRows, position, shapeRanges } from '#lib/evidence.ts';
 	import { percent } from '#lib/groups.ts';
 
 	let { data } = $props();
@@ -21,7 +25,18 @@
 			.sort((a, b) => b.p - a.p)
 	);
 
+	const rows = $derived(checkRows(data.evidence.replication));
+	const shape = $derived(shapeRanges(data.evidence.shape));
+	const k4 = $derived(data.evidence.checks_by_k.find((row) => row.K === 4)!);
+	/** Checks where the real children fall inside the no-groups range, and where they fall outside it. */
+	const inside = $derived(rows.filter((r) => position(r.real, r.noGroups) === 'within'));
+	const outside = $derived(rows.filter((r) => position(r.real, r.noGroups) !== 'within'));
+	const belowFour = $derived(rows.filter((r) => position(r.real, r.fourGroups) === 'below'));
+	const two = (v: number) => v.toFixed(2);
+	const lower = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
+
 	let map = $state<{ children: Children; profiles: Profiles } | null>(null);
+	let clouds = $state<Clouds | null>(null);
 	let failure = $state<string | null>(null);
 	let colorBy = $state('group');
 
@@ -33,8 +48,13 @@
 
 	onMount(async () => {
 		try {
-			const [children, profiles] = await Promise.all([loadData<Children>('children.json'), loadData<Profiles>('profiles.json')]);
+			const [children, profiles, cloudData] = await Promise.all([
+				loadData<Children>('children.json'),
+				loadData<Profiles>('profiles.json'),
+				loadData<Clouds>('clouds.json')
+			]);
 			map = { children, profiles };
+			clouds = cloudData;
 		} catch (error) {
 			failure = error instanceof Error ? error.message : String(error);
 		}
@@ -123,12 +143,77 @@
 		</div>
 	</section>
 
-	<section class="wide step todo" aria-labelledby="todo">
-		<h2 id="todo">Mockup ends here</h2>
-		<p>
-			Still to build: the groups replicate; three clouds, one with real groups; children with no groups pass the same checks; three
-			more checks; what this can and cannot say.
+	<section class="wide step" aria-labelledby="hold-up">
+		<h2 id="hold-up">They hold up</h2>
+		<p class="prose">
+			A grouping that turns up in one sample and nowhere else is noise, so we checked whether these four come back. Each check sorts
+			the children a second time and measures agreement between the two sortings, from 0 (no better than chance) to 1 (identical).
 		</p>
+		<p class="prose">
+			Sorted using only some survey years, the children of the other years got the same groups with agreement
+			{two(k4['held-out years'])}. Sorted on 2016 to 2024 and applied to the 2025 survey, which we held back until the end:
+			{two(k4['2025 forward test'])}. And when we resampled the children over and over, even the least stable group kept an overlap
+			of {two(k4['least stable class (Jaccard)'])} with itself.
+		</p>
+		<YearMaps years={data.years} model={data.model} />
+		<p class="caption">
+			Left: each square is a patch of the map for one survey year, colored by the most common group there; stronger squares hold
+			more children, and patches with fewer than {data.years.min_cell} children are left out. Right: each group's estimated share
+			of US children aged 6 to 17 whose parent reports a current autism diagnosis, with 95% intervals.
+		</p>
+		<p class="prose">
+			By the usual standard, this is where a subtype study ends: four groups in a national sample that come back year after year
+			and in a new survey.
+		</p>
+	</section>
+
+	<section class="wide step" aria-labelledby="three-clouds">
+		<h2 id="three-clouds">Three clouds</h2>
+		<p class="prose">
+			Here is a harder test. Below are three sets of 2,500 children, drawn the way the map above draws them. One is a sample of the
+			real survey. One is made up from four separate groups with clear gaps between them. One is made up with no groups at all:
+			every made-up child sits somewhere on the same two smooth scales.
+		</p>
+		{#if clouds}
+			<CloudGuess {clouds} />
+		{:else if !failure}
+			<p class="loading">Loading the three sets of children.</p>
+		{/if}
+		<p class="prose after-guess">
+			The usual drawing assumes the scores follow a bell curve, and that assumption pulls any data into one round cloud. That is
+			why the map above cannot show gaps. Measured directly, by how much better a lumpy distribution fits each set than a bell
+			curve does, the made-up children with no groups score {Math.round(shape.continuum.min)} to {Math.round(shape.continuum.max)},
+			the made-up children with four separate groups {Math.round(shape.classes.min)} to {Math.round(shape.classes.max)}, and the real
+			children {Math.round(shape.real)}. The real children are lumpier than a smooth continuum and much smoother than four separate
+			groups.
+		</p>
+	</section>
+
+	<section class="wide step" aria-labelledby="turn">
+		<h2 id="turn">Children with no groups pass too</h2>
+		<p class="prose">
+			Now the checks from above, run on made-up children: five sets with no groups and five with four separate groups, each the
+			same size as the survey. If the four groups were real, the real children should score like the made-up four groups.
+		</p>
+		<ReplicationStrip {rows} />
+		<p class="prose">
+			They do not. The real children score below the made-up four groups on {belowFour.length === rows.length
+				? 'every check'
+				: `${belowFour.length} of ${rows.length} checks`}. Made-up children with no groups pass about as well as the real ones: their
+			range takes in the real score on {inside.length} of the {rows.length} checks{#if outside.length},
+				and the exceptions point both ways ({outside
+					.map((r) => `${lower(r.label)}: ${againstRange(r.real, r.noGroups)}`)
+					.join('; ')}){/if}.
+		</p>
+		<p class="prose">
+			So passing these checks does not show that the groups are real. Children with no groups at all pass them too, and the real
+			children never reach the scores that four separate groups produce.
+		</p>
+	</section>
+
+	<section class="wide step todo" aria-labelledby="todo">
+		<h2 id="todo">Still to build</h2>
+		<p>Three more checks (how many groups, groups on top of the scales, outcomes) and what this can and cannot say.</p>
 	</section>
 </article>
 
@@ -199,5 +284,8 @@
 	}
 	.todo {
 		color: var(--ink-2);
+	}
+	.after-guess {
+		margin-top: 1.5rem;
 	}
 </style>
