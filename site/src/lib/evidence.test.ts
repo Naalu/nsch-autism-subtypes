@@ -34,6 +34,7 @@ describe('position', () => {
 		expect(position(0.79, [0.56, 0.77])).toBe('above');
 		expect(position(0.77, [0.85, 0.95])).toBe('below');
 		expect(position(0.71, [0.66, 0.85])).toBe('within');
+		expect(position(0.5411, [0.4409, 0.5408])).toBe('within');
 	});
 });
 

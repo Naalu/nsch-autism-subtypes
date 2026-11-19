@@ -46,10 +46,14 @@ export function againstRange(value: number, simulated: number[]): string {
 	return `${value.toFixed(digits)} against ${low.toFixed(digits)} to ${high.toFixed(digits)}`;
 }
 
-/** Where the real value falls against a set of simulated values. */
-export function position(value: number, simulated: number[]): 'below' | 'within' | 'above' {
-	if (value < Math.min(...simulated)) return 'below';
-	if (value > Math.max(...simulated)) return 'above';
+/**
+ * Where the real value falls against a set of simulated values. A value within `tolerance`
+ * of an end counts as inside: agreement differences that small are noise, and calling
+ * 0.5411 "above" 0.5408 would overstate them.
+ */
+export function position(value: number, simulated: number[], tolerance = 0.005): 'below' | 'within' | 'above' {
+	if (value < Math.min(...simulated) - tolerance) return 'below';
+	if (value > Math.max(...simulated) + tolerance) return 'above';
 	return 'within';
 }
 
